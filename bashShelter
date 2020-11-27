@@ -1,5 +1,5 @@
 #! /bin/bash 
-config="$HOME/.shelter/"
+config="$HOME/.config/shelter/"
 
 
 function main(){
@@ -118,3 +118,4 @@ function list_shelters(){
 
 
 main
+
