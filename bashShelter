@@ -1,0 +1,120 @@
+#! /bin/bash 
+config="$HOME/.shelter/"
+
+
+function main(){
+	history=()
+	cwd=""
+
+	if [[ ! -e $config ]];then
+		mkdir -p ~/.shelter
+	fi
+
+	list=`ls -w 1 $config 2>/dev/null` 
+
+
+	while [[ 1 ]]; do
+
+		read  -e -p "shelter>" -i "$cwd" com
+
+		if [[ $com == "" ]];then
+			cwd=""
+		fi
+
+		case $com in
+			l|list|ls)
+				list_shelters
+
+				;;
+
+			exit|q)
+				exit 0
+				;;
+			*)
+				list_shelters $com
+				;;
+		esac
+			
+	done
+}
+
+
+function clipboard(){
+	echo $passwd | xclip -selection clipboard
+}
+
+function read_gpg(){
+	passwd=`gpg -d $1 2>>/dev/null` || echo "not gpg"
+	clipboard
+	passwd=""
+
+}
+
+function printout(){
+	ls $config/$arg1/* 1>/dev/null 2>/dev/null || gpg=1
+		
+
+		if [[ $gpg == 0 ]] || [[ $show == 1 ]];then
+			
+			for elem in $tmplist
+			do
+				printf "%s %s \n" "-->" $elem
+			done	
+
+			else
+				read_gpg $tmplist
+				gpg=0;
+			fi
+}
+
+function no_argv(){
+	for elem in $list
+		do
+			printf "%s %s \n" "-->" $elem
+		done
+}
+
+
+function list_shelters(){
+	gpg=0
+	show=0
+	arg1="${1//[>]/ / }"
+
+
+
+	if [[ $1 ]];then
+	{
+			cwd=${arg1}
+
+			if [[ ("${cwd: -1}" == "/") ]]; then
+				cwd=$cwd
+			else
+				cwd=$cwd/
+			fi
+
+			tmplist=`ls -w 1 $config/$arg1 2>/dev/null`
+		}||{
+			{
+				tmplist=`ls -w 1 $config/$arg1* 2>/dev/null`
+			}||{
+				tmplist=`ls -w 1 $config `
+				echo '<---- '$arg1' not found ---->'
+				show=1
+				cwd=""
+			}
+		}
+	
+		
+		printout
+	else
+		no_argv
+
+	fi
+	
+	arg1=$cwd$arg1
+	
+
+}
+
+
+main
