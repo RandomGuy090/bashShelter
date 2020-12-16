@@ -2,53 +2,50 @@
 config="$HOME/.config/shelter/"
 
 
-function main(){
-	history=()
-	cwd=""
+function helpMsg(){
+	echo "./bashShelter shelterName login"	
+	echo "	ls|list 			list directories"
+	echo "	-h|--help|?			show this message"
+	echo "	rm|del {shelterName} 		delete shelted/file"
+	echo "	create {shelterName}	 	create shelter"
+	echo "	add {shelter} {f} {pass}"
+	echo "		shelter - shelterName"
+	echo "		f - filename"
+	echo "		pass - password to encrypt"
 
-	if [[ ! -e $config ]];then
-		mkdir -p ~/.shelter
-	fi
 
-	list=`ls -w 1 $config 2>/dev/null` 
-
-
-	while [[ 1 ]]; do
-
-		read  -e -p "shelter>" -i "$cwd" com
-
-		if [[ $com == "" ]];then
-			cwd=""
-		fi
-
-		case $com in
-			l|list|ls)
-				list_shelters
-
-				;;
-
-			exit|q)
-				exit 0
-				;;
-			*)
-				list_shelters $com
-				;;
-		esac
-			
-	done
 }
 
 
 function clipboard(){
 	echo $passwd | xclip -selection clipboard
+	echo "copied"
 }
 
+
 function read_gpg(){
-	passwd=`gpg -d $1 2>>/dev/null` || echo "not gpg"
-	clipboard
+	
+	passwd=`gpg -d $1 2>/dev/null`
+
+	if [[ $passwd == "" ]]; then
+		echo "not gpg"
+		
+	else
+		clipboard
+
+	fi
 	passwd=""
 
 }
+function create_gpg(){
+
+	echo ${array[i+1]} > $config$shelter/${array[i]}
+	gpg --output $config$shelter/${array[i]}.tmp --symmetric $config$shelter/${array[i]}
+	rm $config$shelter/${array[i]}
+	mv $config$shelter/${array[i]}.tmp  $config$shelter/${array[i]}
+		
+}
+
 
 function printout(){
 	ls $config/$arg1/* 1>/dev/null 2>/dev/null || gpg=1
@@ -67,7 +64,9 @@ function printout(){
 			fi
 }
 
+
 function no_argv(){
+	list=`ls -w 1 $config 2>/dev/null` 
 	for elem in $list
 		do
 			printf "%s %s \n" "-->" $elem
@@ -79,8 +78,6 @@ function list_shelters(){
 	gpg=0
 	show=0
 	arg1="${1//[>]/ / }"
-
-
 
 	if [[ $1 ]];then
 	{
@@ -97,14 +94,19 @@ function list_shelters(){
 			{
 				tmplist=`ls -w 1 $config/$arg1* 2>/dev/null`
 			}||{
-				tmplist=`ls -w 1 $config `
+				tmplist=`ls -w 1 $config 2>/dev/null`
 				echo '<---- '$arg1' not found ---->'
 				show=1
 				cwd=""
 			}
 		}
-	
-		
+
+		if [[ $tmplist == "" ]]; then
+			echo '<---- '$arg1' is empty ---->'
+				show=1
+				cwd=$arg1
+		fi
+
 		printout
 	else
 		no_argv
@@ -112,10 +114,131 @@ function list_shelters(){
 	fi
 	
 	arg1=$cwd$arg1
-	
 
 }
 
+function createShelter(){
 
-main
+	array=("$@")
+	array=("${array[@]:1}") 
+
+	lol=$(list_shelters $array)
+	if [[ $lol == *"not found"* ]]; then
+		mkdir $config$array
+	else
+		echo '<---- '$array' already exists ---->' 
+	fi
+
+	unset $array
+	list_shelters
+
+
+
+}
+
+function addPasswords(){
+	array=("$@")
+	shelter=("${array[1]}") 
+	array=("${array[@]:2}") 
+
+	for i in ${!array[@]}
+		do
+			if !(( i%2  )); then
+				create_gpg	
+			fi
+			
+		done
+
+	unset $array
+}
+function delete(){
+	
+	array=("$@")
+	array=("${array[@]:1}") 
+
+	for i in ${!array[@]}
+		do
+			if !(( i%2  )); then
+				rm -r $config/${array[i]}
+			fi
+
+		done
+}
+
+function show_keys(){
+	ls $config/.config/keys
+}
+
+history=()
+	cwd=""
+
+	if [[ ! -e $config ]];then
+		mkdir -p ~/.shelter
+	fi
+
+	list=`ls -w 1 $config 2>/dev/null` 
+
+	if [[ $2 != ""  ]]; then
+		list_shelters $1/$2
+		exit 0
+
+	elif [[ $1 != "" ]]; then
+
+		case $1 in
+			*/*)
+				split $1
+				;;
+			-h|--help)
+				helpMsg
+				;;
+			*)
+				list_shelters $1
+				;;
+
+		esac
+		exit 0
+
+	else
+		while [[ 1 ]]; do
+
+			read  -e -p "shelter>" -i "$cwd" com
+
+			if [[ $com == "" ]];then
+				cwd=""
+			fi
+
+			case $com in
+				l|list|ls)
+					list_shelters $@
+					;;
+
+				exit|q)
+					exit 0
+					;;
+
+				 create)
+					createShelter $com
+					;;
+				rm|del )
+					delete $com
+					;;
+				add )
+					addPasswords $com
+					;;
+				keys)
+					show_keys
+					;;
+				keys | add)
+					add_key
+					;;
+				-h|--help|?)
+					helpMsg
+				;;
+				*)
+					list_shelters $com
+					;;
+			esac
+				
+		done
+	fi
 
