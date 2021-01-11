@@ -1,7 +1,7 @@
 #! /bin/bash 
 # config="$HOME/.config/shelter/"
 # encryptedFile="$HOME/.config/shelter_p"
-encryptedFileName="Ashelter.tar.gpg"
+encryptedFileName="shelter.tar.gpg"
 encryptedFileLocation="/media/veracrypt1"
 encryptedFile="$encryptedFileLocation/$encryptedFileName"
 
@@ -56,7 +56,7 @@ function saveFile {
 	{
 		cp $encryptedFile "$encryptedFileLocation/.$encryptedFileName""_0"
 		# err=`gpgtar -C $configDir -c --output $encryptedFile $configFileName  > /dev/null` 
-		echo "gpgtar -C $configDir -c --output $encryptedFile $configFileName"
+		
 	
 		for (( i = 1; i <= 6; i++ )); do
 			if [[ $i == 6 ]]; then
@@ -82,7 +82,7 @@ function saveFile {
 
 			}
 		done
-		echo "gpgtar succeed"
+
 		rm	"$encryptedFileLocation/.$encryptedFileName""_0"
 
 		
@@ -107,7 +107,8 @@ function clipboard(){
 		
 	else
 		echo $passwd | xclip -selection clipboard
-		echo "copied"
+		printf "%b%s%b\n" "\u001b[32;1m" "<-- copied -->" "\u001b[0m"
+
 	fi
 	passwd=""
 
@@ -120,11 +121,14 @@ function printout(){
 			
 			for elem in $tmplist
 			do
-				printf "%s %s \n" "-->" $elem
+				if [[ -d $config/$elem ]]; then
+					printf "%b%s %s %b\n" "\u001b[34;1m" "-->" $elem "\u001b[0m"
+				else
+					printf "%b%s %s %b\n" "\u001b[33;1m" "-->" $elem "\u001b[0m"
+				fi
 			done	
 
 			else
-				# read_gpg $tmplist
 				clipboard $tmplist
 				gpg=0;
 			fi
@@ -135,7 +139,11 @@ function no_argv(){
 	list=`ls -w 1 $config 2>/dev/null` 
 	for elem in $list
 		do
-			printf "%s %s \n" "-->" $elem
+			if [[ -d $config/$elem ]]; then
+					printf "%b%s %s %b\n" "\u001b[34;1m" "-->" $elem "\u001b[0m"
+				else
+					printf "%b%s %s %b\n" "\u001b[33;1m" "-->" $elem "\u001b[0m"
+				fi
 		done
 }
 
@@ -165,14 +173,17 @@ function list_shelters(){
 		#except
 		}||{
 			tmplist=`ls -w 1 $config 2>/dev/null`
-			echo '<---- '$arg1' not found ---->'
+			printf "%b %s %b \n" "\033[31;1m" "<---- $arg1 not found ---->" "\u001b[0m"
 			show=1
 			cwd=""
 		}
 	}
 
 		if [[ $tmplist == "" ]]; then
-			echo '<---- '$arg1' is empty ---->'
+			# echo '\033[31;1m<---- '$arg1' is empty ---->\u001b[0m'
+			printf "%b %s %b \n" "\033[31;1m" "<----  $arg1 is empty ---->" "\u001b[0m"
+
+
 				show=1
 				cwd=$arg1
 		fi
@@ -183,7 +194,7 @@ function list_shelters(){
 
 	fi
 
-	echo $tmplist
+
 	
 	arg1=$cwd$arg1
 
@@ -233,11 +244,10 @@ function delete(){
 }
 
 
-if ![[ -a $encryptedFile ]]; then
-	echo "encrypted file not found"
+if ! [[ -a $encryptedFile ]]; then
+	echo "encrypted file not found "
 	exit 0
 fi
-
 gpgtar -C $configDir --decrypt $encryptedFile 2>&1 2>/dev/null
 
 tree1=`ls -R $config`
