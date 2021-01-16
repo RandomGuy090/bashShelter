@@ -168,7 +168,12 @@ function printout(){
 		for elem in $res
 		do
 			elem=${elem:$tmpLen+1}
-			printf "%s " "$elem"
+			if [[ -d $config/$elem ]]; then
+				printf "%b%s%b " "\u001b[34;1m" "$elem" "\u001b[0m" 
+			elif [[ -f $config/$elem ]]; then
+				printf "%b%s%b " "\u001b[33;1m" "$elem" "\u001b[0m"
+			fi
+	
 		done
 		printf "\n"
 
