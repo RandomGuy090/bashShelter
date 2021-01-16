@@ -55,7 +55,7 @@ function appExit {
 function saveFile {
 	{
 		cp $encryptedFile "$encryptedFileLocation/.$encryptedFileName""_0"
-		# err=`gpgtar -C $configDir -c --output $encryptedFile $configFileName  > /dev/null` 
+
 		
 	
 		for (( i = 1; i <= 6; i++ )); do
@@ -72,6 +72,10 @@ function saveFile {
 			#try
 			{
 				err=`gpgtar -C $configDir -c --output $encryptedFile $configFileName  2>&1`
+				if [[ *"gpgconf --kill all"* == $err ]]; then
+					echo $err
+				fi
+				
 				if ! [[ $err ]];then
 					break;
 				fi
@@ -111,27 +115,86 @@ function clipboard(){
 
 	fi
 	passwd=""
-
 }
 
 function printout(){
-	ls $config/$arg1/* 1>/dev/null 2>/dev/null || gpg=1
-		
-		if [[ $gpg == 0 ]] || [[ $show == 1 ]];then
-			
-			for elem in $tmplist
-			do
-				if [[ -d $config/$elem ]]; then
-					printf "%b%s %s %b\n" "\u001b[34;1m" "-->" $elem "\u001b[0m"
-				else
-					printf "%b%s %s %b\n" "\u001b[33;1m" "-->" $elem "\u001b[0m"
-				fi
-			done	
+	# ls $config/$arg1 1>/dev/null 2>/dev/null || gpg=1
 
-			else
-				clipboard $tmplist
-				gpg=0;
+
+	if [[ "${arg1: -1}" == "/" ]]; then
+			arg1=${arg1:0:${#arg1}-1}
+			echo cut
+			echo $arg1		
+	fi
+
+	res=`ls -d $config/*  2>/dev/null| grep $arg1 2>/dev/null`
+	
+	tmpLen=${#config}
+
+	
+
+	count=0
+	for elem in $res
+	do
+		count=$(( count+1 ))
+	done
+
+	unset $count
+
+	if [[ $count > 1 ]]; then
+		for elem in $res
+		do
+			elem=${elem:$tmpLen+1}
+			printf "%s " "$elem"
+		done
+		printf "\n"
+
+	elif [[ $count == 0 ]]; then
+
+
+
+		clipboard $tmplist
+		tmplist=" "
+
+	elif [[ $count == 1 ]];then
+		listElem=`ls ${res}`
+		for elem in $listElem
+		do
+			if [[ -d $res/$elem ]]; then
+				printf "%b%s %s %b\n" "\u001b[34;1m" "-->" $elem "\u001b[0m"	
+			elif [[ -f $res/$elem ]]; then
+				printf "%b%s %s %b\n" "\u001b[33;1m" "-->" $elem "\u001b[0m"
 			fi
+		done			
+		cwd=${res:$tmpLen+1:${#res}}
+		arg1=$cwd
+
+
+	else
+		
+		gpg=0;
+	fi
+	
+	
+		# if ! [[ $res == " " ]];then
+		# 	echo ASDASDAD
+		# 	echo $tmplist
+		# 	# innerList=`ls $config/$elem`
+		# 	for elem in $tmplist
+		# 	do
+		# 		echo $config/$elem
+		# 		if [[ -d $config/$elem ]]; then
+
+		# 			printf "%b%s %s %b\n" "\u001b[34;1m" "-->" $elem "\u001b[0m"	
+		# 		elif [[ -f $config/$elem ]]; then
+		# 			printf "%b%s %s %b\n" "\u001b[33;1m" "-->" $elem "\u001b[0m"
+		# 		fi
+		# 	done	
+
+		# else
+		# 	clipboard $tmplist
+		# 	gpg=0;
+		# fi
 }
 
 
@@ -147,57 +210,88 @@ function no_argv(){
 		done
 }
 
+function autocomplete {
+
+		for word in ${tmplist}; do
+			word=${word##/*/}
+				if [[  $word == *$arg1*  ]]; then
+					echo $word
+				fi
+			done
+		
+
+}
+function cut_slash {
+	local tmp=$1
+
+	if [[ "${tmp: -1}" == "/" ]]; then
+		tmp=${tmp:0:${#tmp}-1}
+	
+	fi
+
+	echo $tmp
+}
 
 function list_shelters(){
-	gpg=0
-	show=0
+	arg1=$1
+	if [[ "${arg1: -1}" == "/" ]]; then
+			arg1=${arg1:0:${#arg1}-1}
+		
+	fi
+
 	arg1="${1//[>]/ / }"
 
+	listAll=`ls  -w 1 $config 2>/dev/null`
+
 	if [[ $1 ]];then
-	{
-	#try
-			cwd=${arg1}
 
-			if [[ ("${cwd: -1}" == "/") ]]; then
-				cwd=$cwd
-			else
-				cwd=$cwd/
-			fi
+		tmplist=`ls -w 1 $config/$arg1 2>/dev/null`
 
-			tmplist=`ls -w 1 $config/$arg1 2>/dev/null`
-	# exccept
-	}||{
-		{
-		#try
-			tmplist=`ls -w 1 $config/$arg1* 2>/dev/null`
-		#except
-		}||{
-			tmplist=`ls -w 1 $config 2>/dev/null`
-			printf "%b %s %b \n" "\033[31;1m" "<---- $arg1 not found ---->" "\u001b[0m"
-			show=1
-			cwd=""
-		}
-	}
+		# cwd=${arg1}
 
+		echo valtmp1$tmplist
 		if [[ $tmplist == "" ]]; then
-			# echo '\033[31;1m<---- '$arg1' is empty ---->\u001b[0m'
-			printf "%b %s %b \n" "\033[31;1m" "<----  $arg1 is empty ---->" "\u001b[0m"
-
-
-				show=1
-				cwd=$arg1
+			tmp=/$(cut_slash $cwd)
+			echo XYZ$config$tmp
+			tmplist=`ls -w 1 -d $config$tmp/* 2>/dev/null`
+			echo cwd$tmp
+			echo path$config$tmp/X
+			echo tmplist1.1$tmplist1
+			# tmplist=""
+			#autocomplete $tmplist
+			tmplist="$(autocomplete $tmplist)"
+			# echo $tmplist
+			
+			show=1
 		fi
+		
+		echo valtmp2$tmplist
+		if [[ $tmplist == "" ]]; then
+			echo tmplistNone
+			if [[ $listAll == *$arg1* ]]; then
+				printf "%b %s %b \n" "\033[31;1m" "<----  $arg1 is empty ---->" "\u001b[0m"
+				arg1=""
+			else
+				printf "%b %s %b \n" "\033[31;1m" "<---- $arg1 not found ---->" "\u001b[0m"
+				arg1=""
+			fi
+			show=1
 
-		printout
+
+		fi
+		if ! [[ $tmplist == "" ]]; then
+			printout
+		fi
 	else
 		no_argv
 
 	fi
 
-
-	
-	arg1=$cwd$arg1
-
+	if ! [[ ${#cwd} = 0 ]]; then
+		if ! [[ "${cwd: -1}" == "/" ]]; then
+			cwd=$cwd/
+		fi
+	fi
 }
 
 function createShelter(){
@@ -205,12 +299,12 @@ function createShelter(){
 	array=("${array[@]:1}") 
 
 	lol=$(list_shelters $array)
+
 	if [[ $lol == *"not found"* ]]; then
 		mkdir $config/$array
 	else
 		echo '<---- '$array' already exists ---->' 
 	fi
-
 	unset $array
 	list_shelters
 
@@ -243,12 +337,27 @@ function delete(){
 		done
 }
 
+function shell {
+	cd $config
+	xD=$@
+	lol="${xD:2:${#xD}}"
+	res=`$lol`
+	echo $res
+
+}
 
 if ! [[ -a $encryptedFile ]]; then
 	echo "encrypted file not found "
 	exit 0
 fi
-gpgtar -C $configDir --decrypt $encryptedFile 2>&1 2>/dev/null
+
+#err=`gpgtar -C $configDir -c --output $encryptedFile $configFileName  2>&1`
+err=`gpgtar -C $configDir --decrypt $encryptedFile 1>/dev/null 2>&1 `
+
+if [[ $err ]];then
+	echo Success
+fi
+
 
 tree1=`ls -R $config`
 
@@ -283,7 +392,10 @@ elif [[ $1 != "" ]]; then
 
 else
 	while [[ 1 ]]; do
-
+		# do naprawy
+		# if ! [[ ${cwd[@]:0:1} == "/" ]]; then
+		# 	cwd+="/"
+		# fi
 		read  -e -p "shelter>" -i "$cwd" com
 
 		if [[ $com == "" ]];then
@@ -291,6 +403,9 @@ else
 		fi
 
 		case $com in
+			..*)
+				shell $com
+			;;
 			create* |cr*)
 				createShelter $com
 				;;
@@ -302,6 +417,7 @@ else
 				;;
 
 			l|list|ls)
+				echo $@
 				list_shelters $@
 				;;
 
@@ -316,7 +432,7 @@ else
 				list_shelters $com
 				;;
 		esac
-			
+
 	done
 fi
 
