@@ -14,7 +14,28 @@ config="$configDir/$configFileName"
 
 trap appExit EXIT
 
+function echoDeb {
+	if [[ $debug == 1 ]]; then
+		echo $1
+	fi
+}
+function cut_slash {
+	local tmp=$1
 
+	if [[ "${tmp: -1}" == "/" ]]; then
+		tmp=${tmp:0:${#tmp}-1}
+	
+	fi
+
+	echo $tmp
+}
+function add_slash {
+	local arg=$1
+	if ! [[ "${arg: -1}" == "/" ]]; then
+			arg=$arg/
+	fi
+	echo $arg
+}
 
 function helpMsg(){
 	echo "./bashShelter shelterName login"	
@@ -55,8 +76,6 @@ function appExit {
 function saveFile {
 	{
 		cp $encryptedFile "$encryptedFileLocation/.$encryptedFileName""_0"
-
-		
 	
 		for (( i = 1; i <= 6; i++ )); do
 			if [[ $i == 6 ]]; then
@@ -119,29 +138,33 @@ function clipboard(){
 
 function printout(){
 	# ls $config/$arg1 1>/dev/null 2>/dev/null || gpg=1
-
+	echoDeb tmplistIN$tmplist
 
 	if [[ "${arg1: -1}" == "/" ]]; then
 			arg1=${arg1:0:${#arg1}-1}
-			echo cut
-			echo $arg1		
+			echoDeb $arg1		
+	fi
+	res=""
+	res=`ls -d $config/*  2>/dev/null| grep $arg1 2>/dev/null`
+	echoDeb "ls -d $config/*  2>/dev/null| grep $arg1 2>/dev/null"
+	if [[ $res == "" ]]; then
+		res=`ls -d $config/$arg1*  2>/dev/null| grep $arg1 2>/dev/null`
+		echoDeb "ls -d $config/$arg1*  2>/dev/null| grep $arg1 2>/dev/null"
 	fi
 
-	res=`ls -d $config/*  2>/dev/null| grep $arg1 2>/dev/null`
-	
 	tmpLen=${#config}
 
-	
-
 	count=0
+	echoDeb COUNT
 	for elem in $res
 	do
+		echoDeb $elem
 		count=$(( count+1 ))
 	done
-
 	unset $count
 
 	if [[ $count > 1 ]]; then
+		echoDeb MORE
 		for elem in $res
 		do
 			elem=${elem:$tmpLen+1}
@@ -150,51 +173,56 @@ function printout(){
 		printf "\n"
 
 	elif [[ $count == 0 ]]; then
-
-
-
 		clipboard $tmplist
 		tmplist=" "
 
 	elif [[ $count == 1 ]];then
+		echoDeb ls
+		echoDeb "ls ${res}"
 		listElem=`ls ${res}`
-		for elem in $listElem
-		do
-			if [[ -d $res/$elem ]]; then
-				printf "%b%s %s %b\n" "\u001b[34;1m" "-->" $elem "\u001b[0m"	
-			elif [[ -f $res/$elem ]]; then
-				printf "%b%s %s %b\n" "\u001b[33;1m" "-->" $elem "\u001b[0m"
-			fi
-		done			
-		cwd=${res:$tmpLen+1:${#res}}
-		arg1=$cwd
+		if [[ -f $listElem ]]; then
+			clipboard $listElem
+		else
+			for elem in $listElem
+			do
+				echoDeb $elem
+				if [[ $elem == *$res*  ]]; then
+					file=$elem
+				else
+					file=$res/$elem
+				fi
+				
+				# listLower=`ls $file/* 2>/dev/null`
+				# echo "ls $file/* 2>/dev/null"
+				# echo $listLower
+
+				# if [[ $listLower == "" ]]; then
+				# 	echo listLower:_NONE
+				# 	echo CLIp
+				# 	# clipboard $listLower
+				# else
+				# 	echo listLower:_NOT_NONE
+				# fi
+
+				if [[ -d $file ]]; then
+					printf "%b%s %s %b\n" "\u001b[34;1m" "-->" $elem "\u001b[0m"	
+				elif [[ -f $file ]]; then
+					printf "%b%s %s %b\n" "\u001b[33;1m" "-->" $elem "\u001b[0m"
+				fi
+			done	
+			echoDeb ONE		
+			echoDeb $cwd
+			cwd=${res:$tmpLen+1:${#res}}
+			echoDeb $cwd
+			arg1=$cwd	
+		fi
+		
 
 
 	else
-		
-		gpg=0;
+		echoDeb LOL 
 	fi
 	
-	
-		# if ! [[ $res == " " ]];then
-		# 	echo ASDASDAD
-		# 	echo $tmplist
-		# 	# innerList=`ls $config/$elem`
-		# 	for elem in $tmplist
-		# 	do
-		# 		echo $config/$elem
-		# 		if [[ -d $config/$elem ]]; then
-
-		# 			printf "%b%s %s %b\n" "\u001b[34;1m" "-->" $elem "\u001b[0m"	
-		# 		elif [[ -f $config/$elem ]]; then
-		# 			printf "%b%s %s %b\n" "\u001b[33;1m" "-->" $elem "\u001b[0m"
-		# 		fi
-		# 	done	
-
-		# else
-		# 	clipboard $tmplist
-		# 	gpg=0;
-		# fi
 }
 
 
@@ -221,23 +249,11 @@ function autocomplete {
 		
 
 }
-function cut_slash {
-	local tmp=$1
 
-	if [[ "${tmp: -1}" == "/" ]]; then
-		tmp=${tmp:0:${#tmp}-1}
-	
-	fi
-
-	echo $tmp
-}
 
 function list_shelters(){
 	arg1=$1
-	if [[ "${arg1: -1}" == "/" ]]; then
-			arg1=${arg1:0:${#arg1}-1}
-		
-	fi
+	arg1=$(cut_slash $arg1)
 
 	arg1="${1//[>]/ / }"
 
@@ -249,25 +265,25 @@ function list_shelters(){
 
 		# cwd=${arg1}
 
-		echo valtmp1$tmplist
 		if [[ $tmplist == "" ]]; then
 			tmp=/$(cut_slash $cwd)
-			echo XYZ$config$tmp
-			tmplist=`ls -w 1 -d $config$tmp/* 2>/dev/null`
-			echo cwd$tmp
-			echo path$config$tmp/X
-			echo tmplist1.1$tmplist1
+			tmplist=`ls -w 1 -d $config$tmp/* 2>/dev/null | grep /$arg1 `
+
+			declare -a returnArr=()
+			for elem in $tmplist;do
+			 	elem=/${elem:${#config}+1:${#elem}}
+			 	tmplist+=($elem)
+			done
+
 			# tmplist=""
 			#autocomplete $tmplist
-			tmplist="$(autocomplete $tmplist)"
+			# tmplist="$(autocomplete $tmplist)"
 			# echo $tmplist
 			
 			show=1
 		fi
 		
-		echo valtmp2$tmplist
 		if [[ $tmplist == "" ]]; then
-			echo tmplistNone
 			if [[ $listAll == *$arg1* ]]; then
 				printf "%b %s %b \n" "\033[31;1m" "<----  $arg1 is empty ---->" "\u001b[0m"
 				arg1=""
@@ -288,9 +304,7 @@ function list_shelters(){
 	fi
 
 	if ! [[ ${#cwd} = 0 ]]; then
-		if ! [[ "${cwd: -1}" == "/" ]]; then
-			cwd=$cwd/
-		fi
+		cwd=$(add_slash $cwd)
 	fi
 }
 
@@ -362,6 +376,7 @@ fi
 tree1=`ls -R $config`
 
 cwd=""
+debug=0
 
 if [[ ! -e $config ]];then
 	mkdir -p ~/.shelter
@@ -372,25 +387,37 @@ list=`ls -w 1 $config 2>/dev/null`
 if [[ $2 != ""  ]]; then
 	list_shelters $1/$2
 	exit 0
+fi
 
-elif [[ $1 != "" ]]; then
+if [[ $1 != "" ]]; then
 
 	case $1 in
 		*/*)
 			# split $1
 			printout $1
+			exit 0
 			;;
 		-h|--help)
 			helpMsg
+			exit 0
 			;;
+		-d)
+			debug=1
+			echo debs
+		;;
 		*)
 			list_shelters $1
+			exit 0
 			;;
 
 	esac
-	exit 0
+	
 
-else
+fi
+
+if [[ $1 == "" || $debug == 1 ]]; then
+
+	#statements
 	while [[ 1 ]]; do
 		# do naprawy
 		# if ! [[ ${cwd[@]:0:1} == "/" ]]; then
