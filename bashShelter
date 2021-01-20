@@ -16,7 +16,7 @@ trap appExit EXIT
 
 function echoDeb {
 	if [[ $debug == 1 ]]; then
-		echo $1
+		echo $@
 	fi
 }
 function cut_slash {
@@ -36,6 +36,8 @@ function add_slash {
 	fi
 	echo $arg
 }
+
+
 
 function helpMsg(){
 	echo "./bashShelter shelterName login"	
@@ -196,18 +198,6 @@ function printout(){
 				else
 					file=$res/$elem
 				fi
-				
-				# listLower=`ls $file/* 2>/dev/null`
-				# echo "ls $file/* 2>/dev/null"
-				# echo $listLower
-
-				# if [[ $listLower == "" ]]; then
-				# 	echo listLower:_NONE
-				# 	echo CLIp
-				# 	# clipboard $listLower
-				# else
-				# 	echo listLower:_NOT_NONE
-				# fi
 
 				if [[ -d $file ]]; then
 					printf "%b%s %s %b\n" "\u001b[34;1m" "-->" $elem "\u001b[0m"	
@@ -222,8 +212,6 @@ function printout(){
 			arg1=$cwd	
 		fi
 		
-
-
 	else
 		echoDeb LOL 
 	fi
@@ -264,8 +252,7 @@ function list_shelters(){
 
 	listAll=`ls  -w 1 $config 2>/dev/null`
 
-	if [[ $1 ]];then
-
+	if [[ $arg1 ]];then
 		tmplist=`ls -w 1 $config/$arg1 2>/dev/null`
 
 		# cwd=${arg1}
@@ -279,24 +266,20 @@ function list_shelters(){
 			 	elem=/${elem:${#config}+1:${#elem}}
 			 	tmplist+=($elem)
 			done
-
-			# tmplist=""
-			#autocomplete $tmplist
-			# tmplist="$(autocomplete $tmplist)"
-			# echo $tmplist
 			
-			show=1
 		fi
 		
 		if [[ $tmplist == "" ]]; then
 			if [[ $listAll == *$arg1* ]]; then
 				printf "%b %s %b \n" "\033[31;1m" "<----  $arg1 is empty ---->" "\u001b[0m"
 				arg1=""
+
+				
 			else
 				printf "%b %s %b \n" "\033[31;1m" "<---- $arg1 not found ---->" "\u001b[0m"
 				arg1=""
 			fi
-			show=1
+
 
 
 		fi
@@ -314,7 +297,7 @@ function list_shelters(){
 }
 
 function createShelter(){
-	array=("$@")
+	local array=("$@")
 	array=("${array[@]:1}") 
 
 	lol=$(list_shelters $array)
@@ -330,7 +313,7 @@ function createShelter(){
 }
 
 function addPasswords(){
-	array=("$@")
+	local array=("$@")
 	shelter=("${array[1]}") 
 	array=("${array[@]:2}") 
 
@@ -344,7 +327,7 @@ function addPasswords(){
 }
 function delete(){
 	
-	array=("$@")
+	local array=("$@")
 	array=("${array[@]:1}") 
 
 	for i in ${!array[@]}
@@ -354,36 +337,38 @@ function delete(){
 			fi
 
 		done
+	unset $array
 }
+
 
 function shell {
 	cd $config
-	xD=$@
-	lol="${xD:2:${#xD}}"
-	res=`$lol`
+	local xD=$@
+	local lol="${xD:2:${#xD}}"
+	local res=`$lol`
 	echo $res
 
 }
 
 if ! [[ -a $encryptedFile ]]; then
-	echo "encrypted file not found "
+	echo "Encrypted file not found "
 	exit 0
 fi
 
 #err=`gpgtar -C $configDir -c --output $encryptedFile $configFileName  2>&1`
-err=`gpgtar -C $configDir --decrypt $encryptedFile 1>/dev/null 2>&1 `
+gpgtar -C $configDir --decrypt $encryptedFile 1>/dev/null 2>&1 
 
-if [[ $err ]];then
-	echo Success
+if ! [[ -a $config ]];then
+	echo "Eould not decrypt $encryptedFile"
+	exit 0
 fi
 
 
 tree1=`ls -R $config`
-
 cwd=""
 debug=0
 
-if [[ ! -e $config ]];then
+if ! [[ -e $config ]];then
 	mkdir -p ~/.shelter
 fi
 
@@ -408,7 +393,7 @@ if [[ $1 != "" ]]; then
 			;;
 		-d)
 			debug=1
-			echo debs
+			printf "%b%s%b\n" "\e[0;31m" "DEBUG MODE" "\e[0m"
 		;;
 		*)
 			list_shelters $1
@@ -424,10 +409,7 @@ if [[ $1 == "" || $debug == 1 ]]; then
 
 	#statements
 	while [[ 1 ]]; do
-		# do naprawy
-		# if ! [[ ${cwd[@]:0:1} == "/" ]]; then
-		# 	cwd+="/"
-		# fi
+		
 		read  -e -p "shelter>" -i "$cwd" com
 
 		if [[ $com == "" ]];then
@@ -448,9 +430,8 @@ if [[ $1 == "" || $debug == 1 ]]; then
 				addPasswords $com
 				;;
 
-			l|list|ls)
-				echo $@
-				list_shelters $@
+			l*| list*| ls*)
+				list_shelters ""
 				;;
 
 			exit|q)
