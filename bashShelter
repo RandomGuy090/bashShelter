@@ -1,8 +1,10 @@
 #! /bin/bash 
 # config="$HOME/.config/shelter/"
 # encryptedFile="$HOME/.config/shelter_p"
-encryptedFileName="shelter.tar.gpg"
-encryptedFileLocation="/media/veracrypt1"
+# encryptedFileName="shelter.tar.gpg"
+# encryptedFileLocation="/media/veracrypt1"
+encryptedFileName="xD"
+encryptedFileLocation="/home/randomguy90"
 encryptedFile="$encryptedFileLocation/$encryptedFileName"
 
 # where to temporarily unpack?
@@ -91,8 +93,13 @@ function saveFile {
 			fi
 			
 			#try
-			{
-				err=`gpgtar -C $configDir -c --output $encryptedFile $configFileName  2>&1`
+			{	if [[ $recip == "" ]]; then
+					echoDeb "RECIP:  NONE"
+					err=`gpgtar -C $configDir -c --output $encryptedFile $configFileName  2>&1`
+				else
+					echoDeb "RECIP:  $recip"
+					err=`gpgtar -C $configDir -r $recip -c --output $encryptedFile $configFileName  2>&1`
+				fi
 				if [[ *"gpgconf --kill all"* == $err ]]; then
 					echo $err
 				fi
@@ -350,13 +357,44 @@ function shell {
 
 }
 
+
+
+cwd=""
+recip=""
+debug=0
+SHELL=1
+
+while getopts r:d:h flag
+do
+	case "${flag}" in 
+		# r)recip=${OPTARG};;
+		d)debug=1
+		printf "%b%s%b\n" "\e[0;31m" "DEBUG MODE" "\e[0m"
+		;;
+		h | help)
+			helpMsg
+			exit 0
+			;;
+		
+	esac
+done
 if ! [[ -a $encryptedFile ]]; then
 	echo "Encrypted file not found "
 	exit 0
 fi
+# echo "gpgtar -C $configDir --decrypt -r $recip --output $configFileName $encryptedFile 1>/dev/null 2>&1 "
+# err=`gpgtar -C $configDir -c --output $encryptedFile $configFileName  2>&1`
 
-#err=`gpgtar -C $configDir -c --output $encryptedFile $configFileName  2>&1`
-gpgtar -C $configDir --decrypt $encryptedFile 1>/dev/null 2>&1 
+err=`gpgtar -C $configDir --decrypt $encryptedFile  2>&1`
+err=`echo $err | sed 's/^.* \([^@ ]\+@[^ ]\+\) \?.*$/\1/'`
+
+if [[ $err == *"<"*"@"*">"* ]]; then
+	recip=${err:1:${#err}-4}
+	printf "%s %s\n" "Decrypted with:" "$recip"
+else
+	printf "%s %s\n" "Decrypted with:" "password"
+fi
+
 
 if ! [[ -a $config ]];then
 	echo "Eould not decrypt $encryptedFile"
@@ -365,8 +403,7 @@ fi
 
 
 tree1=`ls -R $config`
-cwd=""
-debug=0
+
 
 if ! [[ -e $config ]];then
 	mkdir -p ~/.shelter
@@ -374,39 +411,29 @@ fi
 
 list=`ls -w 1 $config 2>/dev/null` 
 
-if [[ $2 != ""  ]]; then
-	list_shelters $1/$2
-	exit 0
-fi
 
-if [[ $1 != "" ]]; then
 
+if [[ $1 != "" ]] && [[ $1 != *"-"* ]]; then
 	case $1 in
 		*/*)
-			# split $1
 			printout $1
 			exit 0
 			;;
-		-h|--help)
-			helpMsg
-			exit 0
-			;;
-		-d)
-			debug=1
-			printf "%b%s%b\n" "\e[0;31m" "DEBUG MODE" "\e[0m"
-		;;
 		*)
 			list_shelters $1
 			exit 0
 			;;
-
 	esac
-	
 
+	if [[ $2 != ""  ]]; then
+		echo $1
+		list_shelters $1/$2
+		exit 0
+	fi
 fi
 
-if [[ $1 == "" || $debug == 1 ]]; then
 
+if [[ $SHELL || $1 == "" || $debug == 1 ]]; then	
 	#statements
 	while [[ 1 ]]; do
 		
