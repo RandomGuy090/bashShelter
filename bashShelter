@@ -71,12 +71,10 @@ function encrypt {
 	cd $configDir
 	tar -cvf $configFileName.tar $configFileName 2>&1 1>/dev/null
 	if ! [[ $recip == "" ]]; then
-		echo RRRRRRR
-		echo "err=gpg -e  -r $recip --output $configFileName.tar.gpg  $configFileName.tar"
+		
 		err=`gpg --encrypt -r $recip --output $configFileName.tar.gpg  $configFileName.tar`		
 
 	else
-		echo NOREC
 		err=`gpg -c --output $configFileName.tar.gpg  $configFileName.tar`		
 
 	fi
@@ -91,13 +89,6 @@ function decrypt {
 	cd $configDir
 	cp -r $encryptedFile $config.tar.gpg
 
-	# if ! [[ $1 == "" ]]; then
-	# 	echo RRRRRRR
-	# 	err=`gpg --decrypt -r $1 --output $configFileName.tar $configFileName.tar.gpg 2>&1 1>/dev/null`		
-	# else
-	# 	echo NORECIP
-	# fi
-	# rm $configFileName.tar.gpg 
 	err=`gpg --decrypt  --output $configFileName.tar $configFileName.tar.gpg 2>&1 1>/dev/null`
 
 	tar -xvf $configFileName.tar 2>&1 1>/dev/null
@@ -485,8 +476,8 @@ do
 		
 	esac
 done
-echo `readlink -f $encryptedFile`
-echo `readlink -f $encryptedFile`
+
+
 encryptedFile=`readlink -f $encryptedFile`
 
 echo "File: $encryptedFile"
@@ -494,7 +485,6 @@ if ! [[ -a $encryptedFile ]]; then
 	echo "Encrypted file not found "
 	exit 0
 fi
-
 
 import_keys
 err=$(decrypt)
