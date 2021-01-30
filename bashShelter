@@ -75,13 +75,13 @@ function encrypt {
 	if ! [[ $recip == "" ]]; then
 		
 		err=`gpg --encrypt -r $recip --output $configFileName.tar.gpg  $configFileName.tar`		
-		
+
 	else
 		err=`gpg -c --output $configFileName.tar.gpg  $configFileName.tar`		
 
 	fi
 
-	mv $configDir/$configFileName.tar.gpg $encryptedFile
+	mv $configDir/$configFileName.tar.gpg $encryptedFile 2>/dev/null
 	cd $PWD
 
 }
@@ -122,7 +122,7 @@ function appExit {
 
 	if ! [[ -a $encryptedFile ]]; then
 		echo exiting
-	
+		exit 0
 	fi
 
 	if [[ $tree1 != $tree2 ]]; then
@@ -138,7 +138,7 @@ function appExit {
 
 	fi
 	if [[ -a $configDir ]]; then
-		rm -r $configDir # 1>&2 2>/dev/null
+		rm -r $configDir 1>&2 2>/dev/null
 	fi
 	
 	
@@ -512,7 +512,8 @@ encryptedFile=`readlink -f $encryptedFile`
 echo "File: $encryptedFile"
 if ! [[ -a $encryptedFile ]]; then
 	echo "Encrypted file not found "
-	exit 0
+	configDir=""
+	exit
 fi
 
 tmp_dir
