@@ -45,6 +45,7 @@ function import_keys {
 		if [[ -a ~/.gnupg/private-keys-v1.dXX ]]; then
 			rm -r ~/.gnupg/private-keys-v1.dXX 2>/dev/null
 		fi
+		
 		if [[ -a ~/.gnupg/pubring.kbxXX ]]; then
 			rm -r ~/.gnupg/pubring.kbxXX 2>/dev/null
 		fi		
@@ -69,32 +70,35 @@ function wipe_keys {
 
 function encrypt {
 	cd $configDir
-	tar -cvf $configFileName.tar $configFileName 2>&1 1>/dev/null
+	tmp=`ls -w 1 -r $configDir | head -n 1`
+	tar -cvf $configFileName.tar $tmp 2>&1 1>/dev/null
 	if ! [[ $recip == "" ]]; then
 		
 		err=`gpg --encrypt -r $recip --output $configFileName.tar.gpg  $configFileName.tar`		
-
+		
 	else
 		err=`gpg -c --output $configFileName.tar.gpg  $configFileName.tar`		
 
 	fi
 
-	mv $config.tar.gpg $encryptedFile
-	rm $configFileName.tar
+	mv $configDir/$configFileName.tar.gpg $encryptedFile
 	cd $PWD
-	echo $err
+
 }
 
 function decrypt {
-	cd $configDir
+	cd $configDir 2>/dev/null
 	cp -r $encryptedFile $config.tar.gpg
 
 	err=`gpg --decrypt  --output $configFileName.tar $configFileName.tar.gpg 2>&1 1>/dev/null`
 
-	tar -xvf $configFileName.tar 2>&1 1>/dev/null
-	rm $configFileName.tar
-	rm $configFileName.tar.gpg
-	cd $PWD
+	tar -xvf $configFileName.tar --one-top-level=$config 2>&1 1>/dev/null
+	rm $configFileName.tar 2>/dev/null
+	rm $configFileName.tar.gpg 2>/dev/null
+	# cd $PWD
+	cd $config 2>/dev/null
+	
+	# config=$(pwd)
 	echo $err
 }
 
@@ -133,8 +137,12 @@ function appExit {
 		fi
 
 	fi
-	rm -r $config 1>&2 2>/dev/null
-
+	if [[ -a $configDir ]]; then
+		rm -r $configDir # 1>&2 2>/dev/null
+	fi
+	
+	
+	
 	gpgconf --kill all
 	
 
@@ -439,13 +447,34 @@ function delete(){
 	unset $array
 }
 
+function tmp_dir {
+	local tmp=0
+	while [[ 1 ]]; do
+		if [[ -a $config ]]; then
+			echo "temporary directory found"
+			configFileName=$configFileName"X"
+			config="$configDir/$configFileName"
+			# tmp+=1
+			tmp=$(( $tmp + 1 ))
+		else
+			if [[ $tmp > 0 ]]; then
+				printf "%b %s %b \n" "\033[31;1m" "program is already running" "\u001b[0m"
+				printf "%b %s %b \n" "\033[31;1m" "!! NOT ALL CHANGES WILL BE SAVED !!" "\u001b[0m"
+				#statements
+			fi
+			echo "using: "$configFileName
+			break
+		fi
+	done
+
+}
 
 function shell {
 	cd $config
 	local xD=$@
 	local lol="${xD:2:${#xD}}"
 	local res=`$lol`
-	echoDebv $res
+	echoDeb $res
 
 }
 
@@ -486,15 +515,17 @@ if ! [[ -a $encryptedFile ]]; then
 	exit 0
 fi
 
+tmp_dir
+
 import_keys
+
 err=$(decrypt)
-
-
-echoDeb $err
-
+configDir=$config
+config=$config/`ls -w 1 -r $config 2>/dev/null | head -n 1`
 wipe_keys
 
 err=`echo $err | sed 's/^.* \([^@ ]\+@[^ ]\+\) \?.*$/\1/'`
+
 if [[ $err == *"<"*"@"*">"* ]]; then
 	recip=${err:1:${#err}-3}
 	if [[ $S_KEYS_LOCATION = "" ]] ; then
@@ -513,11 +544,6 @@ if ! [[ -a $config ]];then
 fi
 
 tree1=`ls -R $config`
-
-
-if ! [[ -e $config ]];then
-	mkdir -p ~/.shelter
-fi
 
 list=`ls -w 1 $config 2>/dev/null` 
 
