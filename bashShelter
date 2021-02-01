@@ -15,12 +15,42 @@ config="$configDir/$configFileName"
 PWD=`pwd`
 
 trap appExit EXIT
-
 function echoDeb {
 	if [[ $debug == 1 ]]; then
 		echo $@
 	fi
 }
+
+function genPass {
+	len=$2
+	name=$3
+	local tmp=$len
+
+	if [[ $tmp =~ ^-?[0-9]+$ ]]; then
+		
+		name=$3
+	else
+		name=$len
+		len=8
+	fi
+
+	
+	echo $len
+	echo $name
+
+	local passwd=`head -n $len /dev/urandom | tr -dc '&\_a-zA-Z0-9\^\@' | fold -w $len | head -n 1`
+	echo $passwd
+	echo $cwd
+
+
+	if [[ $name == "" ]]; then
+		clipboard $passwd
+	else
+		echo lol
+		addPasswords add . $name $passwd
+	fi
+}
+
 function cut_slash {
 	local tmp=$1
 
@@ -139,6 +169,7 @@ function appExit {
 	fi
 	if [[ -a $configDir ]]; then
 		rm -r $configDir 1>&2 2>/dev/null
+
 	fi
 	
 	
@@ -213,7 +244,12 @@ function setBackup {
 
 function clipboard(){
 
-	passwd=`cat $1`
+	{
+		passwd=`cat $1 2>/dev/null`
+
+	}||{
+		passwd=`echo $1`
+	}
 
 	if [[ $passwd == "" ]]; then
 		echo "cannot read content of the file"
@@ -246,7 +282,6 @@ function clipboard(){
 
 
 function printout(){
-	# ls $config/$arg1 1>/dev/null 2>/dev/null || gpg=1
 	echoDeb tmplistIN$tmplist
 
 	if [[ "${arg1: -1}" == "/" ]]; then
@@ -454,15 +489,13 @@ function tmp_dir {
 			echo "temporary directory found"
 			configFileName=$configFileName"X"
 			config="$configDir/$configFileName"
-			# tmp+=1
 			tmp=$(( $tmp + 1 ))
 		else
 			if [[ $tmp > 0 ]]; then
 				printf "%b %s %b \n" "\033[31;1m" "program is already running" "\u001b[0m"
 				printf "%b %s %b \n" "\033[31;1m" "!! NOT ALL CHANGES WILL BE SAVED !!" "\u001b[0m"
-				#statements
+				echo "using: "$configFileName
 			fi
-			echo "using: "$configFileName
 			break
 		fi
 	done
@@ -581,6 +614,9 @@ if [[ $SHELL || $1 == "" || $debug == 1 ]]; then
 			..*)
 				shell $com
 			;;
+			gen* |generate*)
+				genPass $com
+				;;
 			create* |cr*)
 				createShelter $com
 				;;
