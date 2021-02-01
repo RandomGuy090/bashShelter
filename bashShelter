@@ -33,20 +33,11 @@ function genPass {
 		name=$len
 		len=8
 	fi
-
-	
-	echo $len
-	echo $name
-
 	local passwd=`head -n $len /dev/urandom | tr -dc '&\_a-zA-Z0-9\^\@' | fold -w $len | head -n 1`
-	echo $passwd
-	echo $cwd
-
 
 	if [[ $name == "" ]]; then
 		clipboard $passwd
 	else
-		echo lol
 		addPasswords add . $name $passwd
 	fi
 }
@@ -604,13 +595,37 @@ fi
 if [[ $SHELL || $1 == "" || $debug == 1 ]]; then	
 	while [[ 1 ]]; do
 		
-		read  -e -p "shelter>" -i "$cwd" com
-
+		# read -sN1 -t 0.0001 k1
+		# read -sN1 -t 0.0001 k2
+		# read -sN1 -t 0.0001 k3
+		# key+=${k1}${k2}${k3}
+		# echo  $key
+		cd $config
+		read  -e -r -p "shelter>" -i "$cwd" com
+		echo $com
 		if [[ $com == "" ]];then
 			cwd=""
 		fi
 
+		case "$key" in
+		    $'\e[A'|$'\e0A'|$'\e[D'|$'\e0D')  # cursor up, left: previous item
+		      ((cur > 1)) && ((cur--))
+		      echo up;;
+
+		    $'\e[B'|$'\e0B'|$'\e[C'|$'\e0C')  # cursor down, right: next item
+		      ((cur < $#-1)) && ((cur++))
+		      echo down;;
+		 esac  
+
 		case $com in
+			$'\e[A'|$'\e0A'|$'\e[D'|$'\e0D')  # cursor up, left: previous item
+		      ((cur > 1)) && ((cur--))
+		      echo up;;
+
+		    $'\e[B'|$'\e0B'|$'\e[C'|$'\e0C')  # cursor down, right: next item
+		      ((cur < $#-1)) && ((cur++))
+		      echo down;;
+
 			..*)
 				shell $com
 			;;
