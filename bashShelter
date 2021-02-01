@@ -607,25 +607,8 @@ if [[ $SHELL || $1 == "" || $debug == 1 ]]; then
 			cwd=""
 		fi
 
-		case "$key" in
-		    $'\e[A'|$'\e0A'|$'\e[D'|$'\e0D')  # cursor up, left: previous item
-		      ((cur > 1)) && ((cur--))
-		      echo up;;
-
-		    $'\e[B'|$'\e0B'|$'\e[C'|$'\e0C')  # cursor down, right: next item
-		      ((cur < $#-1)) && ((cur++))
-		      echo down;;
-		 esac  
 
 		case $com in
-			$'\e[A'|$'\e0A'|$'\e[D'|$'\e0D')  # cursor up, left: previous item
-		      ((cur > 1)) && ((cur--))
-		      echo up;;
-
-		    $'\e[B'|$'\e0B'|$'\e[C'|$'\e0C')  # cursor down, right: next item
-		      ((cur < $#-1)) && ((cur++))
-		      echo down;;
-
 			..*)
 				shell $com
 			;;
