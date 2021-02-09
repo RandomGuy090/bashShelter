@@ -14,6 +14,7 @@ configFileName="shelter"
 config="$configDir/$configFileName"
 PWD=`pwd`
 
+
 trap appExit EXIT
 function echoDeb {
 	if [[ $debug == 1 ]]; then
@@ -125,24 +126,33 @@ function decrypt {
 
 function helpMsg(){
 	echo "./bashShelter shelterName login"	
-	echo "	ls|list 			list directories"
-	echo "	rm|del {shelterName} 		delete shelted/file"
-	echo "	create {shelterName}	 	create shelter"
-	echo "	add {shelter} {f} {pass}"
-	echo "		shelter - shelterName"
-	echo "		f - filename"
-	echo "		pass - password to encrypt"
+	echo "flags:"
 	echo "	-d   debug mode"
 	echo "	-h|--help|?			show this message"
 	echo "	-k /private/key"
 	echo "	-f /encrypted/file"
+	echo "	-s secret keys directory (private-keys-v1)"
+	echo "	-p  public keys file (pubring.kbx)"
+	echo "	-d  debug mode"
+	echo "	-c				show, do not copy to clipboard"
+
+	echo "commands: "
+	echo "	ls|list|l 			list directories"
+	echo "	rm|del {shelter_name 		delete shelted/file"
+	echo "	create {shelter_name}	 	create shelter"
+	echo "	add shelter file Paswd 		add new file to shelter"
+	echo "	gen|generate		generate password"
+	echo "		gen 	-->	copy to clipboard 8 chars"
+	echo "		gen X 	-->	copy to clipboard X chars	| X == INT"
+	echo "		gen X 	-->	paste 8 chars to X file 	| X == STR"
+	echo "		gen X file-->	paste 8 chars to X File		| X == INT"
+	echo "	exit|q				exit program"
 }
  
 function appExit {
 	tree2=`ls -R $config 2>/dev/null`
 
 	if ! [[ -a $encryptedFile ]]; then
-		echo exiting
 		exit 0
 	fi
 
@@ -246,7 +256,8 @@ function clipboard(){
 		echo "cannot read content of the file"
 		
 	else
-
+		if ! [[ $doNotCopy = "1" ]]; then
+			#statements
 			printf "%s" $passwd | xclip -sel clip 2>/dev/null
 			res=`xclip -o -sel clip 2>&1`
 			if [[ $res == " " ]]; then
@@ -264,6 +275,13 @@ function clipboard(){
 					echo 
 				fi
 			fi
+		else
+					echo $passwd
+					sleep 3
+					# printf "\033[2A"
+					reset
+
+		fi
 
 			printf "%b%s%b\n" "\u001b[32;1m" "<-- copied -->" "\u001b[0m"
 		
@@ -510,11 +528,12 @@ S_KEYS_LOCATION=""
 P_KEYS_LOCATION=""
 debug=0
 SHELL=1
+doNotCopy=0
 
 if [[ $1 == *"-h"* ]]; then
 	helpMsg;exit 0
 fi
-while getopts s:p:d:h:f: flag
+while getopts s:p:d:h:f:c flag
 do
 	case "${flag}" in 
 		# r)recip=${OPTARG};;
@@ -524,6 +543,7 @@ do
 		printf "%b%s%b\n" "\e[0;31m" "DEBUG MODE" "\e[0m"
 		;;
 		f)encryptedFile=${OPTARG} ;;
+		c) doNotCopy=1;;
 		h)
 			;;
 		
@@ -591,18 +611,10 @@ if [[ $1 != "" ]] && [[ $1 != *"-"* ]]; then
 	fi
 fi
 
-
+cd $config
 if [[ $SHELL || $1 == "" || $debug == 1 ]]; then	
 	while [[ 1 ]]; do
-		
-		# read -sN1 -t 0.0001 k1
-		# read -sN1 -t 0.0001 k2
-		# read -sN1 -t 0.0001 k3
-		# key+=${k1}${k2}${k3}
-		# echo  $key
-		cd $config
 		read  -e -r -p "shelter>" -i "$cwd" com
-		echo $com
 		if [[ $com == "" ]];then
 			cwd=""
 		fi
@@ -632,7 +644,13 @@ if [[ $SHELL || $1 == "" || $debug == 1 ]]; then
 			exit|q)
 				exit 0
 				;;
-			
+			-c )
+			if [[ $doNotCopy == 1 ]]; then
+				doNotCopy=0
+			else
+				doNotCopy=1
+			fi
+			;;
 			-h|--help|?)
 				helpMsg
 			;;
