@@ -221,12 +221,12 @@ function clipboard(){
 		echo "cannot read content of the file"
 		
 	else
-
+		if ! [[ $doNotCopy = "1" ]]; then
+			#statements
 			printf "%s" $passwd | xclip -sel clip 2>/dev/null
 			res=`xclip -o -sel clip 2>&1`
-
 			if [[ $res == " " ]]; then
-				
+				echo LOOOL
 				res=`echo $passwd | xclip -sel clip2>&1`				
 			fi
 			
@@ -240,13 +240,19 @@ function clipboard(){
 					echo 
 				fi
 			fi
+		else
+					echo $passwd
+					sleep 3
+					# printf "\033[2A"
+					reset
+
+		fi
 
 			printf "%b%s%b\n" "\u001b[32;1m" "<-- copied -->" "\u001b[0m"
 		
 	fi
 	passwd=""
 }
-
 
 function printout(){
 	echoDeb tmplistIN$tmplist
@@ -467,6 +473,7 @@ S_KEYS_LOCATION=""
 P_KEYS_LOCATION=""
 debug=0
 SHELL=1
+doNotCopy=0
 # if [[ $@ == *"-h"* ]]; then
 # 	helpMsg;exit 0
 # fi
@@ -476,6 +483,13 @@ case $@ in
 		;;
 	*"-d"* | *"--debug"*)
 		debug=1
+		;;
+	*"-c"* )
+		if [[ $doNotCopy == 1 ]]; then
+			doNotCopy=0
+		else
+			doNotCopy=1
+		fi
 		;;
 esac
 
