@@ -20,6 +20,28 @@ function echoDeb {
 		echo $@
 	fi
 }
+
+function genPass {
+	len=$2
+	name=$3
+	local tmp=$len
+
+	if [[ $tmp =~ ^-?[0-9]+$ ]]; then
+		
+		name=$3
+	else
+		name=$len
+		len=8
+	fi
+	local passwd=`head -n $len /dev/urandom | tr -dc '&\_a-zA-Z0-9\^\@' | fold -w $len | head -n 1`
+
+	if [[ $name == "" ]]; then
+		clipboard $passwd
+	else
+		addPasswords add . $name $passwd
+	fi
+}
+
 function cut_slash {
 	local tmp=$1
 
@@ -69,17 +91,27 @@ function wipe_keys {
 
 function helpMsg(){
 	echo "./bashShelter shelterName login"	
-	echo "	ls|list 			list directories"
-	echo "	rm|del {shelterName} 		delete shelted/file"
-	echo "	create {shelterName}	 	create shelter"
-	echo "	add {shelter} {f} {pass}"
-	echo "		shelter - shelterName"
-	echo "		f - filename"
-	echo "		pass - password to encrypt"
+	echo "flags:"
 	echo "	-d   debug mode"
 	echo "	-h|--help|?			show this message"
 	echo "	-k /private/key"
 	echo "	-f /encrypted/file"
+	echo "	-s secret keys directory (private-keys-v1)"
+	echo "	-p  public keys file (pubring.kbx)"
+	echo "	-d  debug mode"
+	echo "	-c				show, do not copy to clipboard"
+
+	echo "commands: "
+	echo "	ls|list|l 			list directories"
+	echo "	rm|del {shelter_name 		delete shelted/file"
+	echo "	create {shelter_name}	 	create shelter"
+	echo "	add shelter file Paswd 		add new file to shelter"
+	echo "	gen|generate		generate password"
+	echo "		gen 	-->	copy to clipboard 8 chars"
+	echo "		gen X 	-->	copy to clipboard X chars	| X == INT"
+	echo "		gen X 	-->	paste 8 chars to X file 	| X == STR"
+	echo "		gen X file-->	paste 8 chars to X File		| X == INT"
+	echo "	exit|q				exit program"
 }
  
 function appExit {
@@ -178,7 +210,12 @@ function setBackup {
 
 function clipboard(){
 
-	passwd=`cat $1`
+	{
+		passwd=`cat $1 2>/dev/null`
+
+	}||{
+		passwd=`echo $1`
+	}
 
 	if [[ $passwd == "" ]]; then
 		echo "cannot read content of the file"
@@ -534,6 +571,9 @@ if [[ $SHELL || $1 == "" || $debug == 1 ]]; then
 			..*)
 				shell $com
 			;;
+			gen* |generate*)
+				genPass $com
+				;;
 			create* |cr*)
 				createShelter $com
 				;;
