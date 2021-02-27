@@ -1,15 +1,13 @@
 #! /bin/bash 
-# config="$HOME/.config/shelter/"
-# encryptedFile="$HOME/.config/shelter_p"
-encryptedFileName="shelter.tar.gpg"
+encryptedFileName="shelter"
 encryptedFileLocation="/media/veracrypt1"
-# encryptedFileName="xD"
-# encryptedFileLocation="/home/randomguy90"
 encryptedFile="$encryptedFileLocation/$encryptedFileName"
+
 # where to temporarily unpack?
 configDir="$HOME/.config"
 # tmp file name
-configFileName="shelter"
+# configFileName="shelter"
+configFileName=$encryptedFileName
 # name of unpacked file
 config="$configDir/$configFileName"
 
@@ -17,24 +15,22 @@ trap appExit EXIT
 
 function echoDeb {
 	if [[ $debug == 1 ]]; then
-		echo $@
+		echo "$@"
 	fi
 }
 
 function genPass {
-	len=$2
-	name=$3
-	local tmp=$len
+	local len="$2"
+	local name="$3"
+	local tmp="$len"
 
 	if [[ $tmp =~ ^-?[0-9]+$ ]]; then
-		
 		name=$3
 	else
 		name=$len
 		len=8
 	fi
-	local passwd=`head -n $len /dev/urandom | tr -dc '&\_a-zA-Z0-9\^\@' | fold -w $len | head -n 1`
-
+	local passwd=$(head -n $len /dev/urandom | tr -dc '&\_a-zA-Z0-9\^\@' | fold -w $len | head -n 1)
 	if [[ $name == "" ]]; then
 		clipboard $passwd
 	else
@@ -43,26 +39,26 @@ function genPass {
 }
 
 function cut_slash {
-	local tmp=$1
+	local tmp="$1"
 
 	if [[ "${tmp: -1}" == "/" ]]; then
 		tmp=${tmp:0:${#tmp}-1}
 	
 	fi
 
-	echo $tmp
+	echo "$tmp"
 }
 function add_slash {
-	local arg=$1
+	local arg="$1"
 	if ! [[ "${arg: -1}" == "/" ]]; then
 			arg=$arg/
 	fi
-	echo $arg
+	echo "$arg"
 }
 
 function import_keys {
 
-	if ! [[ $S_KEYS_LOCATION = "" ]] && ! [[ $P_KEYS_LOCATION = "" ]]; then
+	if [[ $S_KEYS_LOCATION != "" ]] &&  [[ $P_KEYS_LOCATION != "" ]]; then
 		if [[ -a ~/.gnupg/private-keys-v1.dXX ]]; then
 			rm -r ~/.gnupg/private-keys-v1.dXX 2>/dev/null
 		fi
@@ -70,36 +66,92 @@ function import_keys {
 			rm -r ~/.gnupg/pubring.kbxXX 2>/dev/null
 		fi		
 		mv ~/.gnupg/private-keys-v1.d ~/.gnupg/private-keys-v1.dXX 2>/dev/null
-		cp -r $S_KEYS_LOCATION ~/.gnupg/private-keys-v1.d 2>/dev/null		
+		cp -r $P_KEYS_LOCATION ~/.gnupg/private-keys-v1.d 2>/dev/null		
 		
 		mv ~/.gnupg/pubring.kbx ~/.gnupg/pubring.kbxXX 2>/dev/null
-		cp -r $P_KEYS_LOCATION ~/.gnupg/pubring.kbx 2>/dev/null		
+		cp -r $S_KEYS_LOCATION ~/.gnupg/pubring.kbx 2>/dev/null		
 
 	fi
 }
 
 function wipe_keys {
-	if ! [[ $S_KEYS_LOCATION = "" ]] && ! [[ $P_KEYS_LOCATION = "" ]]; then
-		rm -r ~/.gnupg/private-keys-v1.d 2>/dev/null
-		mv ~/.gnupg/private-keys-v1.dXX ~/.gnupg/private-keys-v1.d 2>/dev/null
+	if [[ $S_KEYS_LOCATION != "" ]] &&  [[ $P_KEYS_LOCATION != "" ]]; then
 
-		rm -r ~/.gnupg/pubring.kbx 2>/dev/null
-		mv ~/.gnupg/pubring.kbxXX ~/.gnupg/pubring.kbx 2>/dev/null
+		rm -r ~/.gnupg/private-keys-v1.d 2>/dev/null		
+		mv ~/.gnupg/private-keys-v1.dXX ~/.gnupg/private-keys-v1.d  2>/dev/null		
+
+		rm -r ~/.gnupg/pubring.kbx  2>/dev/null		
+		mv ~/.gnupg/pubring.kbxXX ~/.gnupg/pubring.kbx 2>/dev/null		
 	fi
+}
+
+function encrypt {
+	cd $configDir
+	tar -cvf $configFileName.tar $configFileName 2>&1 1>/dev/null
+	
+	if [[ $S_KEYS_LOCATION != "" ]] || [[ $S_KEYS_LOCATION != "" ]] && [[ $create = "1" ]]; then
+		read  -e -p "select a recipient  (ls to show avaliable):  " recip
+		if [[ $recip == "ls" ]]; then
+			import_keys
+			err=$(gpg --list-secret-keys)
+			wipe_keys
+			err=$(echo $err | sed -r 's/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}/\n&\n/ig;s/(^|\n)[^@]*(\n|$)/\n/g;s/^\n|\n$//g;/^$/d')			
+			for elem in $err; do
+				echo "--> $elem"
+			done
+			read  -e -p "select a recipient :  " recip
+			while [[ $recip == "."* ]]; do
+				recip=${recip:1:${#recip}}
+				$recip
+				read  -e -p "select a recipient :  " recip
+			done
+		fi
+	fi
+
+	if ! [[ $recip == "" ]]; then
+		import_keys
+		err=`gpg --encrypt -r $recip --output $configFileName.tar.gpg  $configFileName.tar`		
+		wipe_keys
+	else
+		err=`gpg -c --output $configFileName.tar.gpg  $configFileName.tar`		
+
+	fi
+
+	mv $configDir/$configFileName.tar.gpg $encryptedFile 2>/dev/null
+	cd $PWD
+	rm -r $config.tar 2>/dev/null
+
+}
+
+function decrypt {
+	cd $configDir 2>/dev/null
+	cp -r $encryptedFile $config.tar.gpg
+
+	err=`gpg --decrypt  --output $configFileName.tar $configFileName.tar.gpg 2>&1 1>/dev/null`
+
+	tar -xvf $configFileName.tar --one-top-level=$config 2>&1 1>/dev/null
+	rm $configFileName.tar 2>/dev/null
+	rm $configFileName.tar.gpg 2>/dev/null
+	# cd $PWD
+	cd $config 2>/dev/null
+	
+	# config=$(pwd)
+	echo $err
 }
 
 
 function helpMsg(){
 	echo "./bashShelter shelterName login"	
 	echo "flags:"
-	echo "	-d   debug mode"
-	echo "	-h|--help|?			show this message"
-	echo "	-k /private/key"
-	echo "	-f /encrypted/file"
-	echo "	-s secret keys directory (private-keys-v1)"
-	echo "	-p  public keys file (pubring.kbx)"
-	echo "	-d  debug mode"
-	echo "	-c				show, do not copy to clipboard"
+	echo "	-d 		debug mode"
+	echo "	-h|--help|?	show this message"
+	echo "	-k 		kill gpgconf (do not store password)"
+	echo "	-f 		path to enctypted file"
+	echo "	-s 		secret keys directory (private-keys-v1)"
+	echo "	-p  		public keys file (pubring.kbx)"
+	echo "	-d  		debug mode"
+	echo "	-c  		show, do not copy to clipboard"
+	echo "	-n|-new 	create new file"
 
 	echo "commands: "
 	echo "	ls|list|l 			list directories"
@@ -113,38 +165,78 @@ function helpMsg(){
 	echo "		gen X file-->	paste 8 chars to X File		| X == INT"
 	echo "	exit|q				exit program"
 }
+
  
+ function createNew {
+
+ 	name="$1"
+ 	local res
+ 	if [[ $name == "" ]]; then
+ 		read  -e -p "new file name :  " name
+ 	fi
+ 	configFileName=$name
+	config="$configDir/$configFileName"
+
+ 	mkdir $config
+
+
+
+ }
+
 function appExit {
-	tree2=`ls -R $config 2>/dev/null`
+
+	tree2=$(ls -R $config 2>/dev/null)
 
 	if ! [[ -a $encryptedFile ]]; then
 		echo exiting
-	
 	fi
 
-	if [[ $tree1 != $tree2 ]]; then
-		res=""
-
-		read  -e -p "want to save? y/N:  " res
-
+	if [[ $tree1 != "$tree2" ]]; then
+		local res=""
+		
+		read  -e -p "want to save? y/N:  " res || rm -r $config 
 		if [[ $res == "N" || $res == "n" ]]; then
 			echo "aborting"
 		else
+			if [[ $create == "1" ]]; then
+				while [[ 1 ]]; do
+					read  -e -p "where do you want to save? : " encryptedFileLocation 	
+					if [[ -f $encryptedFileLocation/$configFileName ]]; then
+						local overwrite
+						echo "$encryptedFileLocation exitst"
+						read  -e -p "do you want to overwrite: y/N " overwrite 	
+						if [[ $overwrite == "Y" || $overwrite == "y" ]]; then
+							break
+						fi
+					else
+						break
+					fi
+				done
+				
+			fi
+
+
+			encryptedFile=$encryptedFileLocation/$configFileName
 			saveFile
 		fi
 
 	fi
+	echo $config
 	rm -r $config 1>&2 2>/dev/null
-
-	gpgconf --kill all
+	if [[ $killGPGconf == "1" ]]; then
+		gpgconf --kill all
+	fi
 	
 
 	exit 0
 }
 
 function saveFile {
-	{
-		cp $encryptedFile "$configDir/.$encryptedFileName""_0"
+	{	
+
+		
+		cp $encryptedFile "$config/.$encryptedFileName""_0"  2>/dev/null || true
+		
 
 		
 		for (( i = 1; i <= 6; i++ )); do
@@ -158,19 +250,13 @@ function saveFile {
 				echo "last attempt!!"
 			fi
 			
-			#try
+			##try
 			{	
 				if [[ $recip == "" ]]; then
-					cd $configDir
-					tar -cvf $configFileName.tar $configFileName 2>&1 1>/dev/null
-					err=`gpg -c --output $configFileName.tar.gpg  $configFileName.tar`		
-					rm $configFileName.tar
-					mv $config.tar.gpg $encryptedFile
+					encrypt
 				else
 					import_keys
-
-					echoDeb "err=gpgtar -C $configDir -r $recip -c --output $encryptedFile $configFileName 2>&1"
-					err=`     gpgtar -C $configDir -r $recip -c --output $encryptedFile $configFileName `
+					encrypt $recip
 					echoDeb $err
 					if ! [[ -a $encryptedFile ]]; then
 						echoDeb BAKAP
@@ -195,8 +281,8 @@ function saveFile {
 			}
 		done
 		echoDeb REMOVE
-		rm	"$configDir/.$encryptedFileName""_0"
-		
+		rm	 "$config/.$configFileName""_0"  1>&2 2>/dev/null || true
+
 	}||{
 		echo "password input failed, try again."
 		echo "saving error"
@@ -211,10 +297,10 @@ function setBackup {
 function clipboard(){
 
 	{
-		passwd=`cat $1 2>/dev/null`
+		passwd=$(cat $1 2>/dev/null)
 
 	}||{
-		passwd=`echo $1`
+		passwd=$(echo $1)
 	}
 
 	if [[ $passwd == "" ]]; then
@@ -222,12 +308,10 @@ function clipboard(){
 		
 	else
 		if ! [[ $doNotCopy = "1" ]]; then
-			#statements
 			printf "%s" $passwd | xclip -sel clip 2>/dev/null
-			res=`xclip -o -sel clip 2>&1`
+			res=$(xclip -o -sel clip 2>&1)
 			if [[ $res == " " ]]; then
-				echo LOOOL
-				res=`echo $passwd | xclip -sel clip2>&1`				
+				res=$(cho $passwd | xclip -sel clip2>&1)
 			fi
 			
 			if [[ $res == *"null"* ]];then
@@ -262,10 +346,10 @@ function printout(){
 			echoDeb $arg1		
 	fi
 	res=""
-	res=`ls -d $config/*  2>/dev/null| grep $arg1 2>/dev/null`
+	res=$(ls -d $config/*  2>/dev/null| grep $arg1 2>/dev/null)
 	echoDeb "ls -d $config/*  2>/dev/null| grep $arg1 2>/dev/null"
 	if [[ $res == "" ]]; then
-		res=`ls -d $config/$arg1*  2>/dev/null| grep $arg1 2>/dev/null`
+		res=$(ls -d $config/$arg1*  2>/dev/null| grep $arg1 2>/dev/null)
 		echoDeb "ls -d $config/$arg1*  2>/dev/null| grep $arg1 2>/dev/null"
 	fi
 
@@ -280,7 +364,7 @@ function printout(){
 	done
 	# unset $count
 
-	if [[ $count > 1 ]]; then
+	if [[ $count -gt 1 ]]; then
 		echoDeb MORE
 		for elem in $res
 		do
@@ -301,7 +385,7 @@ function printout(){
 	elif [[ $count == 1 ]];then
 		echoDeb ls
 		echoDeb "ls ${res}"
-		listElem=`ls ${res}`
+		listElem=$(ls ${res})
 		if [[ -f $listElem ]]; then
 			clipboard $listElem
 		else
@@ -335,7 +419,7 @@ function printout(){
 
 
 function no_argv(){
-	list=`ls -w 1 $config 2>/dev/null` 
+	list=$(ls -w 1 $config 2>/dev/null)
 	for elem in $list
 		do
 			if [[ -d $config/$elem ]]; then
@@ -365,16 +449,16 @@ function list_shelters(){
 
 	arg1="${1//[>]/ / }"
 
-	listAll=`ls  -w 1 $config 2>/dev/null`
+	listAll=$(ls  -w 1 $config 2>/dev/null)
 
 	if [[ $arg1 ]];then
-		tmplist=`ls -w 1 $config/$arg1 2>/dev/null`
+		tmplist=$(ls -w 1 $config/$arg1 2>/dev/null)
 
 		# cwd=${arg1}
 
 		if [[ $tmplist == "" ]]; then
 			tmp=/$(cut_slash $cwd)
-			tmplist=`ls -w 1 -d $config$tmp/* 2>/dev/null | grep /$arg1 `
+			tmplist=$(ls -w 1 -d $config$tmp/* 2>/dev/null | grep /$arg1)
 
 			declare -a returnArr=()
 			for elem in $tmplist;do
@@ -447,7 +531,7 @@ function delete(){
 
 	for i in ${!array[@]}
 		do
-			if !(( i%2  )); then
+			if ! (( i%2  )); then
 				rm -r $config/${array[i]}
 			fi
 
@@ -458,9 +542,9 @@ function delete(){
 
 function shell {
 	cd $config
-	local xD=$@
+	local xD="$@"
 	local lol="${xD:2:${#xD}}"
-	local res=`$lol`
+	local res=$($lol)
 	echoDebv $res
 
 }
@@ -474,15 +558,19 @@ P_KEYS_LOCATION=""
 debug=0
 SHELL=1
 doNotCopy=0
-# if [[ $@ == *"-h"* ]]; then
-# 	helpMsg;exit 0
-# fi
-case $@ in
+killGPGconf=0
+create=0
+echo "$@"
+
+case "$@" in
 	*"-h"* | *"--help"* )
 		helpMsg;exit 0
 		;;
 	*"-d"* | *"--debug"*)
 		debug=1
+		;;
+	*"-k"* )
+		killGPGconf=1
 		;;
 	*"-c"* )
 		if [[ $doNotCopy == 1 ]]; then
@@ -493,23 +581,50 @@ case $@ in
 		;;
 esac
 
-while getopts s:p:d:h:f: flag
+while getopts "s:p:d:h:f:n:" flag
 do
 	case "${flag}" in 
-		# r)recip=${OPTARG};;
-		s)S_KEYS_LOCATION=${OPTARG};;
-		p)P_KEYS_LOCATION=${OPTARG};;
+		p)S_KEYS_LOCATION=$(realpath ${OPTARG});;
+		s)P_KEYS_LOCATION=$(realpath ${OPTARG});;
 		d)debug=1
 		printf "%b%s%b\n" "\e[0;31m" "DEBUG MODE" "\e[0m"
 		;;
-		f)encryptedFile=${OPTARG} ;;
-		h)
-			;;
-		
+		f)encryptedFile=${OPTARG} 
+		encryptedFileName=$(basename $encryptedFile)
+		configFileName=$(basename $encryptedFile)
+		config="$configDir/$configFileName"
+		;;
+		k);;
+		h);;
 	esac
 done
 
-encryptedFile=`realpath $encryptedFile`
+if [[ $@ == *"-n"* ]] || [[ $@ == *"--new"* ]] ; then
+		create=1
+		if [[ "$@" == *"-n"* ]] || [[ "$@" == *"--new"* ]]; then
+			if [[ "$2" = *"-"* ]]; then
+				echo 
+				createNew
+			else	
+				echo 2_$2
+				echo 2_$2
+
+				createNew "$2"
+			fi
+		else
+			createNew
+		fi
+		echo S_KEYS_LOCATION$S_KEYS_LOCATION
+		echo P_KEYS_LOCATION$P_KEYS_LOCATION
+
+		if [[ $P_KEYS_LOCATION != "" ]] || [[ $S_KEYS_LOCATION != "" ]] && [[ $create == "0" ]]; then
+			read  -e -p "select a recipient  :  " recip
+
+		fi
+
+fi
+
+encryptedFile=$(realpath $encryptedFile)
 
 echo "File: $encryptedFile"
 if ! [[ -a $encryptedFile ]]; then
@@ -517,16 +632,18 @@ if ! [[ -a $encryptedFile ]]; then
 	exit 0
 fi
 
-import_keys
-err=`gpgtar -C $configDir --decrypt $encryptedFile  2>&1`
-echoDeb "err=gpgtar -C $configDir --decrypt $encryptedFile  2>&1"
-echoDeb $err
+if [[ $create != "1" ]]; then
+	import_keys
+	err=$(gpgtar -C $configDir --decrypt $encryptedFile  2>&1)
+	echoDeb "err=gpgtar -C $configDir --decrypt $encryptedFile  2>&1"
+	echoDeb $err
+	wipe_keys
+fi
 
-wipe_keys
 
-cd $config
+cd $config 2>&1 1>/dev/null
 
-err=`echo $err | sed 's/^.* \([^@ ]\+@[^ ]\+\) \?.*$/\1/'`
+err=$(echo $err | sed 's/^.* \([^@ ]\+@[^ ]\+\) \?.*$/\1/')
 if [[ $err == *"<"*"@"*">"* ]]; then
 	recip=${err:1:${#err}-3}
 	if [[ $S_KEYS_LOCATION = "" ]] ; then
@@ -544,13 +661,13 @@ if ! [[ -a $config ]];then
 	exit 0
 fi
 
-tree1=`ls -R $config`
+tree1=$(ls -R $config)
 
 if ! [[ -e $config ]];then
 	mkdir -p ~/.shelter
 fi
 
-list=`ls -w 1 $config 2>/dev/null` 
+list=$(ls -w 1 $config 2>/dev/null)
 
 if [[ $1 != "" ]] && [[ $1 != *"-"* ]]; then
 	case $1 in
