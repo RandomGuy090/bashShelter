@@ -587,42 +587,26 @@ function import_csv {
 function list_shelters {
 	arg1=$1
 	arg1=$(cut_slash $arg1)
-
 	arg1="${1//[>]/ / }"
 
 	listAll=$(ls  -w 1 $config 2>/dev/null)
-	echo listAll___$listAll
+
 	if [[ $arg1 ]];then
+		if [[ ! -a $config/$arg1 ]] && [[ ! -d $config/$arg1 ]]; then
+			printf "%b %s %b \n" "\033[31;1m" "<---- $arg1 not found ---->" "\u001b[0m"
+			arg1=""
+		else
 		tmplist=$(ls -w 1 $config/$arg1 2>/dev/null)
-
-		# cwd=${arg1}
-
-		if [[ $tmplist == "" ]]; then
-			tmp=/$(cut_slash $cwd)
-			tmplist=$(ls -w 1 -d $config$tmp/* 2>/dev/null | grep /$arg1)
-
-			declare -a returnArr=()
-			for elem in $tmplist;do
-			 	elem=/${elem:${#config}+1:${#elem}}
-			 	tmplist+=($elem)
-			done
+			if [[ $tmplist == "" ]]; then
+				if [[ $listAll == *$arg1* ]]; then
+					printf "%b %s %b \n" "\033[31;1m" "<----  $arg1 is empty ---->" "\u001b[0m"
+					arg1=""
+				fi
+			fi
 			
 		fi
-		
-		if [[ $tmplist == "" ]]; then
-			if [[ $listAll == *$arg1* ]]; then
-				printf "%b %s %b \n" "\033[31;1m" "<----  $arg1 is empty ---->" "\u001b[0m"
-				arg1=""
-
-				
-			else
-				printf "%b %s %b \n" "\033[31;1m" "<---- $arg1 not found ---->" "\u001b[0m"
-				arg1=""
-			fi
 
 
-
-		fi
 		if ! [[ $tmplist == "" ]]; then
 			printout
 		fi
@@ -864,7 +848,7 @@ if [[ $SHELL || $1 == "" || $debug == 1 ]]; then
 				addPasswords $com
 				;;
 
-			l*| list*| ls*)
+			l| list| ls)
 				list_shelters ""
 				;;
 
