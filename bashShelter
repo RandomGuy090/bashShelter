@@ -66,10 +66,10 @@ function import_keys {
 			rm -r ~/.gnupg/pubring.kbxXX 2>/dev/null
 		fi		
 		mv ~/.gnupg/private-keys-v1.d ~/.gnupg/private-keys-v1.dXX 2>/dev/null
-		cp -r $P_KEYS_LOCATION ~/.gnupg/private-keys-v1.d 2>/dev/null		
+		cp -r $S_KEYS_LOCATION ~/.gnupg/private-keys-v1.d 2>/dev/null		
 		
 		mv ~/.gnupg/pubring.kbx ~/.gnupg/pubring.kbxXX 2>/dev/null
-		cp -r $S_KEYS_LOCATION ~/.gnupg/pubring.kbx 2>/dev/null		
+		cp -r $P_KEYS_LOCATION ~/.gnupg/pubring.kbx 2>/dev/null		
 
 	fi
 }
@@ -146,7 +146,41 @@ function decrypt {
 	echo $err
 }
 
+function remove_prefix {
+	inp="$1"
 
+	if [[ $inp == "https"* ]]; then
+		tmp=$inp
+		tmp=${tmp:12:${#tmp}}
+		echo $tmp
+	elif [[ $inp == "http"* ]]; then
+		tmp=$inp
+		tmp=${tmp:11:${#tmp}}
+		echo $tmp
+	elif [[ $inp == "www"* ]]; then
+		tmp=$inp
+		tmp=${tmp:4:${#tmp}}
+		echo $tmp
+	else
+		echo $1
+	fi
+}
+
+function create_file {
+	file=$1
+	fileB=$1
+	if [[ -d $file ]]; then
+		for (( i = 1; i < 20; i++ )); do
+			file=$fileB"_"$i
+			if ! [[ -d $file ]]; then
+				echo $file
+				break
+			fi
+		done
+	else
+		echo $file
+	fi
+}
 function helpMsg(){
 	echo "./bashShelter shelterName login"	
 	echo "flags:"
@@ -193,6 +227,9 @@ function helpMsg(){
 function appExit {
 
 	tree2=$(ls -R $config 2>/dev/null)
+	if [[ $import != "" ]]; then
+		tree2=""
+	fi
 
 	if ! [[ -a $encryptedFile ]]; then
 		echo exiting
@@ -437,20 +474,102 @@ function no_argv(){
 		done
 }
 
-function autocomplete {
 
-		for word in ${tmplist}; do
-			word=${word##/*/}
-				if [[  $word == *$arg1*  ]]; then
-					echo $word
-				fi
-			done
+function import_csv {
+	
+	IMPORT="$1"
+	dir="$2"
+	# dir="/home/randomguy90/RPI/Program/bash/bashShelter/test"
+	# echo $dir > out
+	# dir="/home/randomguy90/RPI/Program/bash/bashShelter/test/"
+
+	declare -a listFiles
+	declare -A arr
+	declare -A totalList
+	
+	cont=$(cat "$IMPORT")
+
+	tmp=$(cat "$IMPORT" | head -n 1)
+	tmp=$(echo $tmp | tr "," "\n")
+
+	for elem in $tmp; do
+		listFiles[${#listFiles[@]}]=$elem
+	done
+
+
+	j=0
+	for elem in $cont; do
+		elem=$(echo $elem | tr "," "\n")
+		elem=$(echo $elem | tr '"' " ")
 		
+
+		i=0
+		for x in $elem; do
+			if [[ $(echo $x | wc -m) -lt 3 ]]; then
+				i=0
+				break
+			fi
+
+			lol=${listFiles[$i]}
+
+			arr["$lol"]=$x
+			i=$(( $i + 1 ))
+		done
+		i=0
+		for elem in ${arr[@]}; do 
+			totalList+=()
+			totalList[$j, $i]=${elem}
+
+			i=$(( $i + 1 ))
+		done
+		j=$(( $j + 1 ))
+	done
+
+	TOTAL=${#totalList[@]}
+	TOTAL=$(( $TOTAL / 4))
+
+
+	for (( i = 0; i < $TOTAL; i++ )); do
+
+		#---------firefox-----------------
+		if [[ ${#listFiles[@]} -eq 9 ]]; then
+			file=$(remove_prefix ${totalList[$i, 1]})
+
+			totalList[$i, 1]=$file
+			
+			cd $dir || exit 0
+			
+			file="$(create_file $file)"
+			if [[ $file == "" ]]; then
+				break
+			fi
+
+			mkdir $file 2>/dev/null || mkdir $file_X 2>/dev/null
+			echo  ${totalList[$i, 0]} > $file/passwd
+			echo  ${totalList[$i, 6]} > $file/login
+			rm -r $dir/url 2>/dev/null
+			   
+		# ----------chrome---------
+		elif [[ ${#listFiles[@]} -eq 4 ]]; then
+			file=$(remove_prefix ${totalList[$i, 3]})
+			totalList[$i, 3]=$file
+			cd $dir || exit 0
+			file="$(create_file $file)"
+			mkdir $file 2>/dev/null || mkdir $file_X 2>/dev/null
+			echo  ${totalList[$i, 2]} > $file/passwd
+			echo  ${totalList[$i, 1]} > $file/login
+			rm -r $dir/name 2>/dev/null
+		fi
+
+		# for (( j = 0; j < ${#listFiles[@]}; j++ )); do 
+		# 	printf "%25.25s (%s) " ${totalList[$i, $j]} $j
+		# done
+		# printf "\n"
+	done
 
 }
 
-
-function list_shelters(){
+function list_shelters {
 	arg1=$1
 	arg1=$(cut_slash $arg1)
 
@@ -567,6 +686,7 @@ SHELL=1
 doNotCopy=0
 killGPGconf=0
 create=0
+import=""
 echo "$@"
 
 case "$@" in
@@ -586,13 +706,14 @@ case "$@" in
 			doNotCopy=1
 		fi
 		;;
+	# "-n"* ) called later
 esac
 
-while getopts "s:p:d:h:f:n:" flag
+while getopts "s:p:d:h:f:n:i:" flag
 do
 	case "${flag}" in 
-		p)S_KEYS_LOCATION=$(realpath ${OPTARG});;
-		s)P_KEYS_LOCATION=$(realpath ${OPTARG});;
+		s)S_KEYS_LOCATION=$(realpath ${OPTARG});;
+		p)P_KEYS_LOCATION=$(realpath ${OPTARG});;
 		d)debug=1
 		printf "%b%s%b\n" "\e[0;31m" "DEBUG MODE" "\e[0m"
 		;;
@@ -601,6 +722,10 @@ do
 		configFileName=$(basename $encryptedFile)
 		config="$configDir/$configFileName"
 		;;
+		i) create=1
+			import=${OPTARG}
+			createNew
+			;;
 		k);;
 		h);;
 	esac
@@ -609,27 +734,29 @@ done
 if [[ $@ == *"-n"* ]] || [[ $@ == *"--new"* ]] ; then
 		create=1
 		if [[ "$@" == *"-n"* ]] || [[ "$@" == *"--new"* ]]; then
+
 			if [[ "$2" = *"-"* ]]; then
 				echo 
 				createNew
 			else	
-				echo 2_$2
-				echo 2_$2
 
 				createNew "$2"
 			fi
 		else
 			createNew
 		fi
-		echo S_KEYS_LOCATION$S_KEYS_LOCATION
-		echo P_KEYS_LOCATION$P_KEYS_LOCATION
-
+		
 		if [[ $P_KEYS_LOCATION != "" ]] || [[ $S_KEYS_LOCATION != "" ]] && [[ $create == "0" ]]; then
 			read  -e -p "select a recipient  :  " recip
 
 		fi
 
 fi
+
+
+if [[ $import != "" ]]; then
+ 	err=$(import_csv "$import" "$config")
+ fi
 
 encryptedFile=$(realpath $encryptedFile)
 
