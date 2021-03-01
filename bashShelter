@@ -533,33 +533,48 @@ function import_csv {
 
 		#---------firefox-----------------
 		if [[ ${#listFiles[@]} -eq 9 ]]; then
-			file=$(remove_prefix ${totalList[$i, 1]})
-
-			totalList[$i, 1]=$file
-			
-			cd $dir || exit 0
-			
-			file="$(create_file $file)"
-			if [[ $file == "" ]]; then
-				break
-			fi
-
-			mkdir $file 2>/dev/null || mkdir $file_X 2>/dev/null
-			echo  ${totalList[$i, 0]} > $file/passwd
-			echo  ${totalList[$i, 6]} > $file/login
-			rm -r $dir/url 2>/dev/null
-			   
-		# ----------chrome---------
-		elif [[ ${#listFiles[@]} -eq 4 ]]; then
-			file=$(remove_prefix ${totalList[$i, 3]})
-			totalList[$i, 3]=$file
-			cd $dir || exit 0
-			file="$(create_file $file)"
-			mkdir $file 2>/dev/null || mkdir $file_X 2>/dev/null
-			echo  ${totalList[$i, 2]} > $file/passwd
-			echo  ${totalList[$i, 1]} > $file/login
-			rm -r $dir/name 2>/dev/null
+		# if [[ $file ==  ]]; then
+		# 	break
+		# fi
+		login=${totalList[$i, 6]}
+		file=$(remove_prefix ${totalList[$i, 1]})
+		loghead=$(remove_prefix ${totalList[$i, 6]})
+		if [[ $file == "" ]]; then
+			break
 		fi
+		file=${loghead:0:5}_$file
+		
+		echo {totalList[$i, 6]}___${totalList[$i, 6]}
+		totalList[$i, 1]=$file
+		
+		cd $dir || exit 0
+		file="$(create_file $file $login)"
+
+		mkdir $file 2>/dev/null || mkdir $file_X 2>/dev/null
+		echo  ${totalList[$i, 0]} > $file/passwd
+		echo  $login > $file/login
+		rm -r $dir/usern_url 2>/dev/null
+		   
+	# ----------chrome---------
+	elif [[ ${#listFiles[@]} -eq 4 ]]; then
+		login=${totalList[$i, 1]}
+		file=$(remove_prefix ${totalList[$i, 3]})
+		loghead=$(remove_prefix ${totalList[$i, 1]})
+		if [[ $file == "" ]]; then
+			break
+		fi
+		file=${loghead:0:5}_$file
+		
+		echo {totalList[$i, 6]}___${totalList[$i, 6]}
+		totalList[$i, 1]=$file
+		
+		cd $dir || exit 0
+		file="$(create_file $file)"
+		mkdir $file 2>/dev/null || mkdir $file_X 2>/dev/null
+		echo  $login > $file/login
+		echo  ${totalList[$i, 2]} > $file/passwd
+		rm -r $dir/usern_name 2>/dev/null
+	fi
 
 		# for (( j = 0; j < ${#listFiles[@]}; j++ )); do 
 		# 	printf "%25.25s (%s) " ${totalList[$i, $j]} $j
@@ -576,7 +591,7 @@ function list_shelters {
 	arg1="${1//[>]/ / }"
 
 	listAll=$(ls  -w 1 $config 2>/dev/null)
-
+	echo listAll___$listAll
 	if [[ $arg1 ]];then
 		tmplist=$(ls -w 1 $config/$arg1 2>/dev/null)
 
