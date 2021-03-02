@@ -493,7 +493,7 @@ function import_csv {
 			if [[ $file == "" ]]; then
 				break
 			fi
-			file=${loghead:0:5}_$file
+			file=$file"_"${loghead:0:5}"XX"
 			
 			echo {totalList[$i, 6]}___${totalList[$i, 6]}
 			totalList[$i, 1]=$file
@@ -514,7 +514,7 @@ function import_csv {
 			if [[ $file == "" ]]; then
 				break
 			fi
-			file=${loghead:0:5}_$file
+			file=$file"_"${loghead:0:5}"XX"
 			
 			echo {totalList[$i, 6]}___${totalList[$i, 6]}
 			totalList[$i, 1]=$file
