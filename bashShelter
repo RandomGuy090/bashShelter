@@ -135,14 +135,11 @@ function decrypt {
 	cp -r $encryptedFile $config.tar.gpg
 
 	err=`gpg --decrypt  --output $configFileName.tar $configFileName.tar.gpg 2>&1 1>/dev/null`
-
+	
 	tar -xvf $configFileName.tar --one-top-level=$config 2>&1 1>/dev/null
 	rm $configFileName.tar 2>/dev/null
 	rm $configFileName.tar.gpg 2>/dev/null
-	# cd $PWD
 	cd $config 2>/dev/null
-	
-	# config=$(pwd)
 	echo $err
 }
 
@@ -193,6 +190,7 @@ function helpMsg(){
 	echo "	-d  		debug mode"
 	echo "	-c  		show, do not copy to clipboard"
 	echo "	-n|-new 	create new file"
+	echo "	-i 		import csv file with passwords"
 
 	echo "commands: "
 	echo "	ls|list|l 			list directories"
@@ -383,59 +381,24 @@ function clipboard(){
 }
 
 function printout(){
-	echoDeb tmplistIN$tmplist
 
 	if [[ "${arg1: -1}" == "/" ]]; then
 			arg1=${arg1:0:${#arg1}-1}
 			echoDeb $arg1		
 	fi
-	res=""
-	res=$(ls -d $config/*  2>/dev/null| grep $arg1 2>/dev/null)
-	echoDeb "ls -d $config/*  2>/dev/null| grep $arg1 2>/dev/null"
-	if [[ $res == "" ]]; then
-		res=$(ls -d $config/$arg1*  2>/dev/null| grep $arg1 2>/dev/null)
-		echoDeb "ls -d $config/$arg1*  2>/dev/null| grep $arg1 2>/dev/null"
-	fi
-
-	tmpLen=${#config}
-
-	count=0
-	echoDeb COUNT
-	for elem in $res
-	do
-		echoDeb $elem
-		count=$(( count+1 ))
-	done
-	# unset $count
-
-	if [[ $count -gt 1 ]]; then
-		echoDeb MORE
-		for elem in $res
-		do
-			elem=${elem:$tmpLen+1}
-			if [[ -d $config/$elem ]]; then
-				printf "%b%s%b " "\u001b[34;1m" "$elem" "\u001b[0m" 
-			elif [[ -f $config/$elem ]]; then
-				printf "%b%s%b " "\u001b[33;1m" "$elem" "\u001b[0m"
-			fi
 	
-		done
-		printf "\n"
+	res=$config/$arg1
+	tmpLen=${#config}
+	count=$( ls -d $config/$arg1 | wc -l )
 
-	elif [[ $count == 0 ]]; then
-		clipboard $tmplist
+	if [[ -f $res  ]]; then
+		clipboard $res
 		tmplist=" "
 
-	elif [[ $count == 1 ]];then
-		echoDeb ls
-		echoDeb "ls ${res}"
+	elif [[ -d $res ]]; then
 		listElem=$(ls ${res})
-		if [[ -f $listElem ]]; then
-			clipboard $listElem
-		else
-			for elem in $listElem
+		for elem in $listElem
 			do
-				echoDeb $elem
 				if [[ $elem == *$res*  ]]; then
 					file=$elem
 				else
@@ -448,17 +411,9 @@ function printout(){
 					printf "%b%s %s %b\n" "\u001b[33;1m" "-->" $elem "\u001b[0m"
 				fi
 			done	
-			echoDeb ONE		
-			echoDeb $cwd
 			cwd=${res:$tmpLen+1:${#res}}
-			echoDeb $cwd
 			arg1=$cwd	
-		fi
-		
-	else
-		echoDeb LOL 
-	fi
-	
+	fi	
 }
 
 
@@ -479,9 +434,7 @@ function import_csv {
 	
 	IMPORT="$1"
 	dir="$2"
-	# dir="/home/randomguy90/RPI/Program/bash/bashShelter/test"
-	# echo $dir > out
-	# dir="/home/randomguy90/RPI/Program/bash/bashShelter/test/"
+
 
 	declare -a listFiles
 	declare -A arr
@@ -533,53 +486,46 @@ function import_csv {
 
 		#---------firefox-----------------
 		if [[ ${#listFiles[@]} -eq 9 ]]; then
-		# if [[ $file ==  ]]; then
-		# 	break
-		# fi
-		login=${totalList[$i, 6]}
-		file=$(remove_prefix ${totalList[$i, 1]})
-		loghead=$(remove_prefix ${totalList[$i, 6]})
-		if [[ $file == "" ]]; then
-			break
-		fi
-		file=${loghead:0:5}_$file
-		
-		echo {totalList[$i, 6]}___${totalList[$i, 6]}
-		totalList[$i, 1]=$file
-		
-		cd $dir || exit 0
-		file="$(create_file $file $login)"
+			
+			login=${totalList[$i, 6]}
+			file=$(remove_prefix ${totalList[$i, 1]})
+			loghead=$(remove_prefix ${totalList[$i, 6]})
+			if [[ $file == "" ]]; then
+				break
+			fi
+			file=${loghead:0:5}_$file
+			
+			echo {totalList[$i, 6]}___${totalList[$i, 6]}
+			totalList[$i, 1]=$file
+			
+			cd $dir || exit 0
+			file="$(create_file $file $login)"
 
-		mkdir $file 2>/dev/null || mkdir $file_X 2>/dev/null
-		echo  ${totalList[$i, 0]} > $file/passwd
-		echo  $login > $file/login
-		rm -r $dir/usern_url 2>/dev/null
-		   
-	# ----------chrome---------
-	elif [[ ${#listFiles[@]} -eq 4 ]]; then
-		login=${totalList[$i, 1]}
-		file=$(remove_prefix ${totalList[$i, 3]})
-		loghead=$(remove_prefix ${totalList[$i, 1]})
-		if [[ $file == "" ]]; then
-			break
+			mkdir $file 2>/dev/null || mkdir $file_X 2>/dev/null
+			echo  ${totalList[$i, 0]} > $file/passwd
+			echo  $login > $file/login
+			rm -r $dir/usern_url 2>/dev/null
+			   
+		# ----------chrome---------
+		elif [[ ${#listFiles[@]} -eq 4 ]]; then
+			login=${totalList[$i, 1]}
+			file=$(remove_prefix ${totalList[$i, 3]})
+			loghead=$(remove_prefix ${totalList[$i, 1]})
+			if [[ $file == "" ]]; then
+				break
+			fi
+			file=${loghead:0:5}_$file
+			
+			echo {totalList[$i, 6]}___${totalList[$i, 6]}
+			totalList[$i, 1]=$file
+			
+			cd $dir || exit 0
+			file="$(create_file $file)"
+			mkdir $file 2>/dev/null || mkdir $file_X 2>/dev/null
+			echo  $login > $file/login
+			echo  ${totalList[$i, 2]} > $file/passwd
+			rm -r $dir/usern_name 2>/dev/null
 		fi
-		file=${loghead:0:5}_$file
-		
-		echo {totalList[$i, 6]}___${totalList[$i, 6]}
-		totalList[$i, 1]=$file
-		
-		cd $dir || exit 0
-		file="$(create_file $file)"
-		mkdir $file 2>/dev/null || mkdir $file_X 2>/dev/null
-		echo  $login > $file/login
-		echo  ${totalList[$i, 2]} > $file/passwd
-		rm -r $dir/usern_name 2>/dev/null
-	fi
-
-		# for (( j = 0; j < ${#listFiles[@]}; j++ )); do 
-		# 	printf "%25.25s (%s) " ${totalList[$i, $j]} $j
-		# done
-		# printf "\n"
 	done
 
 }
@@ -596,17 +542,15 @@ function list_shelters {
 			printf "%b %s %b \n" "\033[31;1m" "<---- $arg1 not found ---->" "\u001b[0m"
 			arg1=""
 		else
-		tmplist=$(ls -w 1 $config/$arg1 2>/dev/null)
+
+			tmplist=$(ls -w 1 $config/$arg1 2>/dev/null)
 			if [[ $tmplist == "" ]]; then
 				if [[ $listAll == *$arg1* ]]; then
 					printf "%b %s %b \n" "\033[31;1m" "<----  $arg1 is empty ---->" "\u001b[0m"
 					arg1=""
 				fi
 			fi
-			
 		fi
-
-
 		if ! [[ $tmplist == "" ]]; then
 			printout
 		fi
