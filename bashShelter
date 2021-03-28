@@ -631,7 +631,14 @@ killGPGconf=0
 create=0
 import=""
 
-
+if [[ "$@" == *"-c"* ]]; then
+	if [[ $doNotCopy == 1 ]]; then
+			doNotCopy=0
+		else
+			doNotCopy=1
+	fi
+fi
+	
 case "$@" in
 	*"-h"* | *"--help"* )
 		helpMsg;exit 0
@@ -642,19 +649,11 @@ case "$@" in
 	*"-k"* )
 		killGPGconf=1
 		;;
-	*"-c"* )
-	echo LOOOOOL
-		if [[ $doNotCopy == 1 ]]; then
-			doNotCopy=0
-		else
-			doNotCopy=1
-		fi
-		;;
-	# "-n"* ) called later
+
 esac
 echo doNotCopy$doNotCopy
 
-while getopts "s:p:d:h:f:i:" flag
+while getopts "s:p:d:h:c:f:i:" flag
 do
 	case "${flag}" in 
 		s)S_KEYS_LOCATION=$(realpath ${OPTARG});;
