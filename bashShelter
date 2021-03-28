@@ -630,7 +630,7 @@ doNotCopy=0
 killGPGconf=0
 create=0
 import=""
-echo "$@"
+
 
 case "$@" in
 	*"-h"* | *"--help"* )
@@ -652,7 +652,7 @@ case "$@" in
 	# "-n"* ) called later
 esac
 
-while getopts "s:p:d:h:f:n:i:" flag
+while getopts "s:p:d:h:f::i:" flag
 do
 	case "${flag}" in 
 		s)S_KEYS_LOCATION=$(realpath ${OPTARG});;
@@ -676,6 +676,9 @@ done
 
 if [[ $@ == *"-n"* ]] || [[ $@ == *"--new"* ]] ; then
 		create=1
+		echo CREATE
+		echo   P_KEYS_LOCATION$P_KEYS_LOCATION
+		echo S_KEYS_LOCATION$S_KEYS_LOCATION
 		if [[ "$@" == *"-n"* ]] || [[ "$@" == *"--new"* ]]; then
 
 			if [[ "$2" = *"-"* ]]; then
@@ -703,18 +706,20 @@ if [[ $import != "" ]]; then
 
 encryptedFile=$(realpath $encryptedFile)
 
-echo "File: $encryptedFile"
-if ! [[ -a $encryptedFile ]]; then
-	echo "Encrypted file not found "
-	exit 0
-fi
 
 if [[ $create != "1" ]]; then
+	echo "File: $encryptedFile"
+	if ! [[ -a $encryptedFile  ]] ; then
+		echo "Encrypted file not found "
+		exit 0
+	fi
 	import_keys
 	err=$(gpgtar -C $configDir --decrypt $encryptedFile  2>&1)
 	echoDeb "err=gpgtar -C $configDir --decrypt $encryptedFile  2>&1"
 	echoDeb $err
 	wipe_keys
+else
+	echo "New file"
 fi
 
 
