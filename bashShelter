@@ -676,9 +676,7 @@ done
 
 if [[ $@ == *"-n"* ]] || [[ $@ == *"--new"* ]] ; then
 		create=1
-		echo CREATE
-		echo   P_KEYS_LOCATION$P_KEYS_LOCATION
-		echo S_KEYS_LOCATION$S_KEYS_LOCATION
+		echo CREATING
 		if [[ "$@" == *"-n"* ]] || [[ "$@" == *"--new"* ]]; then
 
 			if [[ "$2" = *"-"* ]]; then
