@@ -643,6 +643,7 @@ case "$@" in
 		killGPGconf=1
 		;;
 	*"-c"* )
+	echo LOOOOOL
 		if [[ $doNotCopy == 1 ]]; then
 			doNotCopy=0
 		else
@@ -651,8 +652,9 @@ case "$@" in
 		;;
 	# "-n"* ) called later
 esac
+echo doNotCopy$doNotCopy
 
-while getopts "s:p:d:h:f::i:" flag
+while getopts "s:p:d:h:f:i:" flag
 do
 	case "${flag}" in 
 		s)S_KEYS_LOCATION=$(realpath ${OPTARG});;
