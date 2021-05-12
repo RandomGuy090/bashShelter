@@ -1,4 +1,5 @@
 #! /bin/bash 
+
 encryptedFileName="shelter"
 encryptedFileLocation="/media/veracrypt1"
 encryptedFile="$encryptedFileLocation/$encryptedFileName"
@@ -10,6 +11,7 @@ configDir="$HOME/.config"
 configFileName=$encryptedFileName
 # name of unpacked file
 config="$configDir/$configFileName"
+
 
 trap appExit EXIT
 
@@ -121,13 +123,10 @@ function encrypt {
 		wipe_keys
 	else
 		err=`gpg -c --output $configFileName.tar.gpg  $configFileName.tar`		
-		echo "gpg --encrypt --output $configFileName.tar.gpg  $configFileName.tar"
 
 	fi
 
 	mv $configDir/$configFileName.tar.gpg $encryptedFile 2>/dev/null
-	echo "mv $configDir/$configFileName.tar.gpg $encryptedFile 2>/dev/null"
-	cd $PWD
 	rm -r $config.tar 2>/dev/null
 
 }
@@ -666,8 +665,9 @@ do
 		d)debug=1
 		printf "%b%s%b\n" "\e[0;31m" "DEBUG MODE" "\e[0m"
 		;;
-		f)encryptedFile=${OPTARG} 
+		f)encryptedFile=$(realpath ${OPTARG} )
 		encryptedFileName=$(basename $encryptedFile)
+		encryptedFileLocation=$(dirname $encryptedFile)
 		configFileName=$(basename $encryptedFile)
 		config="$configDir/$configFileName"
 		;;
@@ -679,6 +679,11 @@ do
 		h);;
 	esac
 done
+
+
+encryptedFile="$encryptedFileLocation/$encryptedFileName"
+
+
 
 if [[ $@ == *"-n"* ]] || [[ $@ == *"--new"* ]] ; then
 		create=1
@@ -708,7 +713,7 @@ if [[ $import != "" ]]; then
  	err=$(import_csv "$import" "$config")
  fi
 
-encryptedFile=$(realpath $encryptedFile)
+
 
 
 if [[ $create != "1" ]]; then
