@@ -121,10 +121,12 @@ function encrypt {
 		wipe_keys
 	else
 		err=`gpg -c --output $configFileName.tar.gpg  $configFileName.tar`		
+		echo "gpg --encrypt --output $configFileName.tar.gpg  $configFileName.tar"
 
 	fi
 
 	mv $configDir/$configFileName.tar.gpg $encryptedFile 2>/dev/null
+	echo "mv $configDir/$configFileName.tar.gpg $encryptedFile 2>/dev/null"
 	cd $PWD
 	rm -r $config.tar 2>/dev/null
 
@@ -224,7 +226,10 @@ function helpMsg(){
 
 function appExit {
 
-	tree2=$(ls -R $config 2>/dev/null)
+	# tree2=$(ls -R $config 2>/dev/null)
+	tree2=$(find $config -type f -exec sha1sum {} \;)
+
+
 	if [[ $import != "" ]]; then
 		tree2=""
 	fi
@@ -651,7 +656,7 @@ case "$@" in
 		;;
 
 esac
-echo doNotCopy$doNotCopy
+
 
 while getopts "s:p:d:h:c:f:i:" flag
 do
@@ -742,7 +747,8 @@ if ! [[ -a $config ]];then
 	exit 0
 fi
 
-tree1=$(ls -R $config)
+
+tree1=$(find $config -type f -exec sha1sum {} \;)
 
 if ! [[ -e $config ]];then
 	mkdir -p ~/.shelter
